@@ -59,14 +59,15 @@ export default function Chat() {
   }
 
   async function fetchMessages() {
-    console.log('fetchMessages called, matchId:', matchId)
     const { data: msgs, error } = await supabase
       .from('messages')
       .select('*')
       .eq('match_id', matchId)
       .order('created_at', { ascending: true })
-    console.log('data:', msgs, 'error:', error)
-    setMessages(msgs || [])
+    if (!error) {
+      setMessages(msgs || [])
+      localStorage.setItem(`seen_chat_${matchId}`, new Date().toISOString())
+    }
   }
 
   async function handleSubmitReport(reason) {

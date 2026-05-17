@@ -23,6 +23,7 @@ export default function Matches() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    localStorage.setItem('last_seen_matches', new Date().toISOString())
     fetchMatches()
   }, [user.id])
 
