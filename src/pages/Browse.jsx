@@ -24,10 +24,8 @@ export default function Browse() {
   const [listings, setListings] = useState([])
   const [myListing, setMyListing] = useState(null)
   const [likedIds, setLikedIds] = useState(new Set())
-  const [view, setView] = useState('grid') // 'grid' | 'swipe'
-  const [swipeIndex, setSwipeIndex] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [reportTarget, setReportTarget] = useState(null) // { listingId, userId }
+  const [reportTarget, setReportTarget] = useState(null)
 
   useEffect(() => {
     fetchData()
@@ -36,7 +34,6 @@ export default function Browse() {
   async function fetchData() {
     setLoading(true)
 
-    // Mój aktywny listing
     const { data: mine } = await supabase
       .from('listings')
       .select('id')
@@ -45,14 +42,12 @@ export default function Browse() {
       .single()
     setMyListing(mine)
 
-    // Moje like'i
     const { data: myLikes } = await supabase
       .from('likes')
       .select('to_listing')
       .eq('from_user', user.id)
     setLikedIds(new Set((myLikes || []).map(l => l.to_listing)))
 
-    // Wszystkie aktywne listingi innych użytkowników
     const { data: all } = await supabase
       .from('listings')
       .select(`
@@ -75,9 +70,8 @@ export default function Browse() {
       return
     }
 
-    if (likedIds.has(listingId)) return // już polubione
+    if (likedIds.has(listingId)) return
 
-    // Dodaj like
     const { error: likeError } = await supabase.from('likes').insert({
       from_user: user.id,
       to_listing: listingId,
@@ -88,7 +82,6 @@ export default function Browse() {
       return
     }
 
-    // Sprawdź czy tamta osoba też nas like'uje (match)
     const theirListing = listings.find(l => l.id === listingId)
     if (theirListing) {
       const { data: theirLike } = await supabase
@@ -130,17 +123,6 @@ export default function Browse() {
     })
   }
 
-  function handleSwipeNext() {
-    setSwipeIndex(i => Math.min(i + 1, listings.length - 1))
-  }
-
-  function handleSwipeLike() {
-    if (listings[swipeIndex]) {
-      handleLike(listings[swipeIndex].id)
-    }
-    handleSwipeNext()
-  }
-
   if (loading) return (
     <div style={{ textAlign: 'center', padding: 80, color: '#666' }}>
       Loading watches…
@@ -150,27 +132,9 @@ export default function Browse() {
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 20px' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-        <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Browse watches</h1>
-          <p style={{ color: '#666', margin: '4px 0 0' }}>{listings.length} watches available</p>
-        </div>
-
-        {/* View toggle */}
-        <div style={{ display: 'flex', background: '#f3f4f6', borderRadius: 10, padding: 4 }}>
-          {['grid', 'swipe'].map(v => (
-            <button key={v} onClick={() => setView(v)} style={{
-              padding: '8px 20px', border: 'none', borderRadius: 8,
-              background: view === v ? '#111' : 'transparent',
-              color: view === v ? '#fff' : '#666',
-              fontWeight: 600, cursor: 'pointer', fontSize: 14,
-              transition: 'all 0.15s',
-            }}>
-              {v === 'grid' ? '⊞ Grid' : '↔ Swipe'}
-            </button>
-          ))}
-        </div>
+      <div style={{ marginBottom: 32 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Browse watches</h1>
+        <p style={{ color: '#666', margin: '4px 0 0' }}>{listings.length} watches available</p>
       </div>
 
       {!myListing && (
@@ -197,18 +161,23 @@ export default function Browse() {
           <div style={{ fontSize: 48, marginBottom: 16 }}>⌚</div>
           <p>No watches yet. Be the first to list yours!</p>
         </div>
-      ) : view === 'grid' ? (
-        <GridView listings={listings} likedIds={likedIds} onLike={handleLike} onReport={openReport} />
       ) : (
-        <SwipeView
-          listing={listings[swipeIndex]}
-          index={swipeIndex}
-          total={listings.length}
-          liked={likedIds.has(listings[swipeIndex]?.id)}
-          onLike={handleSwipeLike}
-          onSkip={handleSwipeNext}
-          onReport={openReport}
-        />
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+          gap: 20,
+        }}>
+          {listings.map(l => (
+            <WatchCard
+              key={l.id}
+              listing={l}
+              liked={likedIds.has(l.id)}
+              onLike={handleLike}
+              onReport={openReport}
+              onOpen={() => navigate(`/listing/${l.id}`)}
+            />
+          ))}
+        </div>
       )}
 
       <ReportModal
@@ -220,7 +189,7 @@ export default function Browse() {
   )
 }
 
-function WatchCard({ listing, liked, onLike, onReport }) {
+function WatchCard({ listing, liked, onLike, onReport, onOpen }) {
   const photo = listing.photos?.[0]
   const country = listing.profiles?.country || '?'
 
@@ -228,13 +197,15 @@ function WatchCard({ listing, liked, onLike, onReport }) {
     <div style={{
       background: '#fff', borderRadius: 16, overflow: 'hidden',
       border: '1px solid #e5e7eb', transition: 'box-shadow 0.2s',
-      cursor: 'default',
     }}
       onMouseEnter={e => e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'}
       onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
     >
-      {/* Photo */}
-      <div style={{ position: 'relative', aspectRatio: '1', background: '#f9fafb' }}>
+      {/* Photo — click to open details */}
+      <div
+        onClick={onOpen}
+        style={{ position: 'relative', aspectRatio: '1', background: '#f9fafb', cursor: 'pointer' }}
+      >
         {photo ? (
           <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
@@ -251,124 +222,40 @@ function WatchCard({ listing, liked, onLike, onReport }) {
         )}
       </div>
 
-      {/* Info */}
+      {/* Info — click text area to open details */}
       <div style={{ padding: '14px 16px' }}>
-        <div style={{ fontWeight: 700, fontSize: 15 }}>{listing.brand}</div>
-        <div style={{ color: '#444', fontSize: 14, marginBottom: 8 }}>{listing.model}</div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 12, color: '#666' }}>
+        <div onClick={onOpen} style={{ cursor: 'pointer' }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>{listing.brand}</div>
+          <div style={{ color: '#444', fontSize: 14, marginBottom: 8 }}>{listing.model}</div>
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 10 }}>
             {GEO_ICONS[listing.geo_scope]} {country} · {TIER_LABELS[listing.price_tier] || listing.price_tier}
           </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button
+            onClick={() => onReport(listing.id, listing.user_id)}
+            style={{
+              background: 'none', border: 'none', padding: 0,
+              cursor: 'pointer', fontSize: 11, color: '#ccc',
+              textDecoration: 'underline',
+            }}
+          >
+            Report
+          </button>
           <button
             onClick={() => onLike(listing.id)}
             style={{
               background: liked ? '#fef2f2' : '#f9fafb',
               border: liked ? '1px solid #fca5a5' : '1px solid #e5e7eb',
-              borderRadius: 8, padding: '6px 12px', cursor: 'pointer',
+              borderRadius: 8, padding: '6px 12px', cursor: liked ? 'default' : 'pointer',
               fontSize: 16, transition: 'all 0.15s',
             }}
           >
             {liked ? '❤️' : '🤍'}
           </button>
         </div>
-
-        <button
-          onClick={() => onReport(listing.id, listing.user_id)}
-          style={{
-            background: 'none', border: 'none', padding: '4px 0 0',
-            cursor: 'pointer', fontSize: 11, color: '#ccc',
-            textDecoration: 'underline',
-          }}
-        >
-          Report
-        </button>
       </div>
-    </div>
-  )
-}
-
-function GridView({ listings, likedIds, onLike, onReport }) {
-  return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-      gap: 20,
-    }}>
-      {listings.map(l => (
-        <WatchCard key={l.id} listing={l} liked={likedIds.has(l.id)} onLike={onLike} onReport={onReport} />
-      ))}
-    </div>
-  )
-}
-
-function SwipeView({ listing, index, total, liked, onLike, onSkip, onReport }) {
-  if (!listing) return (
-    <div style={{ textAlign: 'center', padding: 80, color: '#999' }}>
-      <div style={{ fontSize: 48, marginBottom: 16 }}>✓</div>
-      <p>You've seen all watches!</p>
-    </div>
-  )
-
-  const photo = listing.photos?.[0]
-  const country = listing.profiles?.country || '?'
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-      <p style={{ color: '#999', fontSize: 14 }}>{index + 1} / {total}</p>
-
-      <div style={{
-        background: '#fff', borderRadius: 24, overflow: 'hidden',
-        border: '1px solid #e5e7eb', width: '100%', maxWidth: 400,
-        boxShadow: '0 20px 60px rgba(0,0,0,0.1)',
-      }}>
-        <div style={{ aspectRatio: '1', background: '#f9fafb' }}>
-          {photo ? (
-            <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 80 }}>⌚</div>
-          )}
-        </div>
-
-        <div style={{ padding: '20px 24px' }}>
-          <div style={{ fontWeight: 700, fontSize: 20 }}>{listing.brand}</div>
-          <div style={{ color: '#444', fontSize: 16, marginBottom: 4 }}>{listing.model}</div>
-          <div style={{ fontSize: 13, color: '#888' }}>
-            {GEO_ICONS[listing.geo_scope]} {country} · {TIER_LABELS[listing.price_tier] || listing.price_tier}
-            {listing.open_to_topup && ' · open to top-up'}
-          </div>
-        </div>
-      </div>
-
-      {/* Buttons */}
-      <div style={{ display: 'flex', gap: 24 }}>
-        <button onClick={onSkip} style={{
-          width: 64, height: 64, borderRadius: '50%', border: '2px solid #e5e7eb',
-          background: '#fff', fontSize: 24, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-        }}>✕</button>
-
-        <button onClick={onLike} disabled={liked} style={{
-          width: 64, height: 64, borderRadius: '50%',
-          border: liked ? '2px solid #fca5a5' : '2px solid #111',
-          background: liked ? '#fef2f2' : '#111', fontSize: 24, cursor: liked ? 'default' : 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        }}>
-          {liked ? '❤️' : '🤍'}
-        </button>
-      </div>
-
-      <button
-        onClick={() => onReport(listing.id, listing.user_id)}
-        style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          fontSize: 12, color: '#bbb', textDecoration: 'underline',
-        }}
-      >
-        Report this listing
-      </button>
     </div>
   )
 }

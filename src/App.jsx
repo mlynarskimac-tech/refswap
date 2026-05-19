@@ -9,6 +9,7 @@ import Browse from './pages/Browse'
 import MyWatch from './pages/MyWatch'
 import Matches from './pages/Matches'
 import Chat from './pages/Chat'
+import ListingDetail from './pages/ListingDetail'
 import Header from './components/Header'
 
 const AUTH_ROUTES = ['/login', '/register']
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="/my-watch" element={user ? <MyWatch /> : <Navigate to="/login" />} />
         <Route path="/matches" element={user ? <Matches /> : <Navigate to="/login" />} />
         <Route path="/chat/:matchId" element={user ? <Chat /> : <Navigate to="/login" />} />
+        <Route path="/listing/:id" element={user ? <ListingDetail /> : <Navigate to="/login" />} />
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
         <Route
           path="/"

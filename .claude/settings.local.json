@@ -4,7 +4,12 @@
       "Bash(npm create *)",
       "Bash(npx create-vite@latest . --template react)",
       "Bash(npx create-vite@latest *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(git config *)"
     ]
   }
 }
