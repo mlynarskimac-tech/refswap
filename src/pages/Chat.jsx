@@ -15,6 +15,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(true)
   const [reportOpen, setReportOpen] = useState(false)
   const [matchStatus, setMatchStatus] = useState('active')
+  const [closing, setClosing] = useState(false)
   const bottomRef = useRef(null)
 
   useEffect(() => {
@@ -82,14 +83,37 @@ export default function Chat() {
   }
 
   async function handleCloseMatch() {
+    if (closing) return
     if (!window.confirm('Are you sure? This will close the match and delete the conversation for both parties.')) return
-    await supabase.from('messages').insert({
-      match_id: matchId,
-      sender_id: null,
-      content: 'This match has been closed.',
-      is_system: true,
-    })
-    await supabase.from('matches').update({ status: 'closed' }).eq('id', matchId)
+    setClosing(true)
+
+    const { data: existing } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('match_id', matchId)
+      .eq('is_system', true)
+      .maybeSingle()
+
+    if (!existing) {
+      await supabase.from('messages').insert({
+        match_id: matchId,
+        sender_id: null,
+        content: 'This match has been closed.',
+        is_system: true,
+      })
+    }
+
+    const { error } = await supabase
+      .from('matches')
+      .update({ status: 'closed' })
+      .eq('id', matchId)
+
+    if (error) {
+      console.error('Failed to close match:', error)
+      setClosing(false)
+      return
+    }
+
     navigate('/matches')
   }
 
@@ -132,12 +156,14 @@ export default function Chat() {
         {matchStatus !== 'closed' && (
           <button
             onClick={handleCloseMatch}
+            disabled={closing}
             style={{
               background: 'none', border: '1px solid #fca5a5', borderRadius: 8,
-              padding: '6px 14px', cursor: 'pointer', fontSize: 13, color: '#dc2626',
+              padding: '6px 14px', cursor: closing ? 'default' : 'pointer',
+              fontSize: 13, color: '#dc2626', opacity: closing ? 0.5 : 1,
             }}
           >
-            Close match
+            {closing ? 'Closing…' : 'Close match'}
           </button>
         )}
         <button

@@ -47,17 +47,20 @@ export default function Browse() {
       .from('likes')
       .select('to_listing')
       .eq('from_user', user.id)
-    setLikedIds(new Set((myLikes || []).map(l => l.to_listing)))
+    const likedSet = new Set((myLikes || []).map(l => l.to_listing))
 
     const { data: myMatches } = await supabase
       .from('matches')
-      .select('user_a, listing_a, listing_b')
+      .select('user_a, listing_a, listing_b, status')
       .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
-      .eq('status', 'active')
+
     const matchedSet = new Set()
     for (const m of myMatches || []) {
-      matchedSet.add(m.user_a === user.id ? m.listing_b : m.listing_a)
+      const theirListing = m.user_a === user.id ? m.listing_b : m.listing_a
+      if (m.status === 'active') matchedSet.add(theirListing)
+      else if (m.status === 'closed') likedSet.delete(theirListing)
     }
+    setLikedIds(likedSet)
     setMatchedIds(matchedSet)
 
     const { data: all } = await supabase
