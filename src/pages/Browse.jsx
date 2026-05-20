@@ -79,6 +79,7 @@ export default function Browse() {
   }
 
   async function handleLike(listingId) {
+    console.log('[handleLike] called', { listingId, myListing, liked: likedIds.has(listingId), matched: matchedIds.has(listingId) })
     if (!myListing) {
       alert('Add your watch first to like others.')
       navigate('/create-listing')
