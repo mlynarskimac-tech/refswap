@@ -24,6 +24,7 @@ export default function Browse() {
   const [listings, setListings] = useState([])
   const [myListing, setMyListing] = useState(null)
   const [likedIds, setLikedIds] = useState(new Set())
+  const [matchedIds, setMatchedIds] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [reportTarget, setReportTarget] = useState(null)
 
@@ -48,6 +49,17 @@ export default function Browse() {
       .eq('from_user', user.id)
     setLikedIds(new Set((myLikes || []).map(l => l.to_listing)))
 
+    const { data: myMatches } = await supabase
+      .from('matches')
+      .select('user_a, listing_a, listing_b')
+      .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+      .eq('status', 'active')
+    const matchedSet = new Set()
+    for (const m of myMatches || []) {
+      matchedSet.add(m.user_a === user.id ? m.listing_b : m.listing_a)
+    }
+    setMatchedIds(matchedSet)
+
     const { data: all } = await supabase
       .from('listings')
       .select(`
@@ -70,7 +82,14 @@ export default function Browse() {
       return
     }
 
-    if (likedIds.has(listingId)) return
+    if (likedIds.has(listingId)) {
+      if (matchedIds.has(listingId)) return
+      await supabase.from('likes').delete()
+        .eq('from_user', user.id)
+        .eq('to_listing', listingId)
+      setLikedIds(prev => { const n = new Set(prev); n.delete(listingId); return n })
+      return
+    }
 
     const { error: likeError } = await supabase.from('likes').insert({
       from_user: user.id,
@@ -172,6 +191,7 @@ export default function Browse() {
               key={l.id}
               listing={l}
               liked={likedIds.has(l.id)}
+              matched={matchedIds.has(l.id)}
               onLike={handleLike}
               onReport={openReport}
               onOpen={() => navigate(`/listing/${l.id}`)}
@@ -189,7 +209,7 @@ export default function Browse() {
   )
 }
 
-function WatchCard({ listing, liked, onLike, onReport, onOpen }) {
+function WatchCard({ listing, liked, matched, onLike, onReport, onOpen }) {
   const photo = listing.photos?.[0]
   const country = listing.profiles?.country || '?'
 
@@ -245,11 +265,15 @@ function WatchCard({ listing, liked, onLike, onReport, onOpen }) {
           </button>
           <button
             onClick={() => onLike(listing.id)}
+            disabled={matched}
+            title={matched ? 'Manage this match in chat' : liked ? 'Remove like' : 'Like this watch'}
             style={{
               background: liked ? '#fef2f2' : '#f9fafb',
               border: liked ? '1px solid #fca5a5' : '1px solid #e5e7eb',
-              borderRadius: 8, padding: '6px 12px', cursor: liked ? 'default' : 'pointer',
+              borderRadius: 8, padding: '6px 12px',
+              cursor: matched ? 'not-allowed' : 'pointer',
               fontSize: 16, transition: 'all 0.15s',
+              opacity: matched ? 0.5 : 1,
             }}
           >
             {liked ? '❤️' : '🤍'}

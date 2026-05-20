@@ -14,6 +14,7 @@ export default function Chat() {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(true)
   const [reportOpen, setReportOpen] = useState(false)
+  const [matchStatus, setMatchStatus] = useState('active')
   const bottomRef = useRef(null)
 
   useEffect(() => {
@@ -29,7 +30,7 @@ export default function Chat() {
   async function loadChat() {
     const { data: match, error } = await supabase
       .from('matches')
-      .select('user_a, user_b, listing_a, listing_b')
+      .select('user_a, user_b, listing_a, listing_b, status')
       .eq('id', matchId)
       .single()
 
@@ -38,6 +39,7 @@ export default function Chat() {
       return
     }
 
+    setMatchStatus(match.status)
     const otherId = match.user_a === user.id ? match.user_b : match.user_a
     const otherListingId = match.user_a === user.id ? match.listing_b : match.listing_a
 
@@ -59,15 +61,15 @@ export default function Chat() {
   }
 
   async function fetchMessages() {
-    const { data: msgs, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('match_id', matchId)
-      .order('created_at', { ascending: true })
+    const [{ data: msgs, error }, { data: matchData }] = await Promise.all([
+      supabase.from('messages').select('*').eq('match_id', matchId).order('created_at', { ascending: true }),
+      supabase.from('matches').select('status').eq('id', matchId).single(),
+    ])
     if (!error) {
       setMessages(msgs || [])
       localStorage.setItem(`seen_chat_${matchId}`, new Date().toISOString())
     }
+    if (matchData) setMatchStatus(matchData.status)
   }
 
   async function handleSubmitReport(reason) {
@@ -77,6 +79,18 @@ export default function Chat() {
       reported_listing_id: other.listingId,
       reason,
     })
+  }
+
+  async function handleCloseMatch() {
+    if (!window.confirm('Are you sure? This will close the match and delete the conversation for both parties.')) return
+    await supabase.from('messages').insert({
+      match_id: matchId,
+      sender_id: null,
+      content: 'This match has been closed.',
+      is_system: true,
+    })
+    await supabase.from('matches').update({ status: 'closed' }).eq('id', matchId)
+    navigate('/matches')
   }
 
   async function handleSend(e) {
@@ -115,6 +129,17 @@ export default function Chat() {
           <div style={{ fontWeight: 700, fontSize: 15 }}>{other.name}</div>
           <div style={{ fontSize: 13, color: '#888' }}>{other.brand} {other.model}</div>
         </div>
+        {matchStatus !== 'closed' && (
+          <button
+            onClick={handleCloseMatch}
+            style={{
+              background: 'none', border: '1px solid #fca5a5', borderRadius: 8,
+              padding: '6px 14px', cursor: 'pointer', fontSize: 13, color: '#dc2626',
+            }}
+          >
+            Close match
+          </button>
+        )}
         <button
           onClick={() => setReportOpen(true)}
           style={{
@@ -125,6 +150,17 @@ export default function Chat() {
           Report
         </button>
       </div>
+
+      {/* Closed banner */}
+      {matchStatus === 'closed' && (
+        <div style={{
+          background: '#fef2f2', borderBottom: '1px solid #fca5a5',
+          padding: '10px 20px', textAlign: 'center',
+          fontSize: 14, color: '#991b1b', flexShrink: 0,
+        }}>
+          This match has been closed. You can no longer send messages.
+        </div>
+      )}
 
       {/* Messages */}
       <div style={{
@@ -154,15 +190,17 @@ export default function Chat() {
         <input
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder="Type a message…"
+          placeholder={matchStatus === 'closed' ? 'This match is closed.' : 'Type a message…'}
+          disabled={matchStatus === 'closed'}
           style={{
             flex: 1, padding: '10px 14px', borderRadius: 10,
             border: '1px solid #e5e7eb', fontSize: 14, outline: 'none',
+            background: matchStatus === 'closed' ? '#f9fafb' : '#fff',
           }}
         />
         <button
           type="submit"
-          disabled={!text.trim()}
+          disabled={!text.trim() || matchStatus === 'closed'}
           style={{
             padding: '10px 20px', borderRadius: 10, border: 'none',
             background: text.trim() ? '#111' : '#e5e7eb',
@@ -184,6 +222,20 @@ export default function Chat() {
 }
 
 function Bubble({ msg, isMine }) {
+  if (msg.is_system) {
+    return (
+      <div style={{ textAlign: 'center', padding: '6px 0' }}>
+        <span style={{
+          background: '#f3f4f6', borderRadius: 20,
+          padding: '4px 14px', fontSize: 13, color: '#888',
+          border: '1px solid #e5e7eb',
+        }}>
+          {msg.content}
+        </span>
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
       <div style={{
