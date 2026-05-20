@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
 
-const TIER_LABELS = {
-  entry: '3k–6k EUR',
-  mid: '6k–12k EUR',
-  high: '12k–25k EUR',
-  ultra: '25k–50k EUR',
+const TIER_CONFIG = {
+  entry: { label: '3k–6k EUR', color: '#7A7A9A', bg: 'rgba(122,122,154,0.12)' },
+  mid:   { label: '6k–12k EUR', color: '#5A8FAA', bg: 'rgba(90,143,170,0.12)' },
+  high:  { label: '12k–25k EUR', color: '#9A7ABB', bg: 'rgba(154,122,187,0.12)' },
+  ultra: { label: '25k–50k EUR', color: '#C9A84C', bg: 'rgba(201,168,76,0.12)' },
 }
 
 const GEO_ICONS = {
@@ -67,27 +67,59 @@ export default function Matches() {
     setLoading(false)
   }
 
-  if (loading) return <div style={{ padding: 24, color: '#666' }}>Loading matches…</div>
+  if (loading) return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      height: 'calc(100vh - 60px)', color: '#353545', fontSize: 14,
+    }}>
+      Loading matches…
+    </div>
+  )
 
   if (matches.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: 80, color: '#999' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>⌚</div>
-        <p>No matches yet. Keep swiping!</p>
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        height: 'calc(100vh - 60px)', gap: 12,
+      }}>
+        <div style={{ fontSize: 40, opacity: 0.2 }}>⌚</div>
+        <p style={{ color: '#353548', fontSize: 14 }}>No matches yet. Keep browsing.</p>
+        <button
+          onClick={() => navigate('/browse')}
+          style={{
+            marginTop: 8, background: 'transparent',
+            border: '1px solid #252535', borderRadius: 8,
+            padding: '8px 20px', fontSize: 13, fontWeight: 500,
+            color: '#525265', cursor: 'pointer',
+          }}
+        >
+          Browse watches
+        </button>
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', padding: '32px 20px' }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 6 }}>Matches</h1>
-      <p style={{ color: '#666', marginBottom: 32 }}>
-        {matches.length} match{matches.length !== 1 ? 'es' : ''}
-      </p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {matches.map(m => (
-          <MatchCard key={m.matchId} matchId={m.matchId} profile={m.profile} listing={m.listing} onChat={() => navigate(`/chat/${m.matchId}`)} />
-        ))}
+    <div style={{ background: '#0B0B14', minHeight: 'calc(100vh - 60px)' }}>
+      <div style={{ maxWidth: 820, margin: '0 auto', padding: '40px 24px' }}>
+        <div style={{ marginBottom: 32 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#F0EDE8' }}>Matches</h1>
+          <p style={{ color: '#353548', fontSize: 13, marginTop: 4 }}>
+            {matches.length} active {matches.length === 1 ? 'match' : 'matches'}
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {matches.map(m => (
+            <MatchCard
+              key={m.matchId}
+              matchId={m.matchId}
+              profile={m.profile}
+              listing={m.listing}
+              onChat={() => navigate(`/chat/${m.matchId}`)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -95,49 +127,81 @@ export default function Matches() {
 
 function MatchCard({ profile, listing, onChat }) {
   const photo = listing?.photos?.[0]
+  const tier = TIER_CONFIG[listing?.price_tier]
 
   return (
     <div style={{
-      display: 'flex', background: '#fff',
-      border: '1px solid #e5e7eb', borderRadius: 16, overflow: 'hidden',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-    }}>
+      display: 'flex',
+      background: '#111120',
+      border: '1px solid #1A1A28',
+      borderRadius: 16,
+      overflow: 'hidden',
+      transition: 'border-color 0.2s',
+    }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = '#2A2A3C'}
+      onMouseLeave={e => e.currentTarget.style.borderColor = '#1A1A28'}
+    >
       {/* Photo */}
-      <div style={{ width: 148, flexShrink: 0, background: '#f9fafb', position: 'relative' }}>
+      <div style={{ width: 140, flexShrink: 0, background: '#0D0D1A', position: 'relative' }}>
         {photo ? (
-          <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', minHeight: 148, fontSize: 44 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: '100%', minHeight: 140, fontSize: 36, opacity: 0.15,
+          }}>
             ⌚
           </div>
         )}
         {listing?.open_to_topup && (
           <div style={{
             position: 'absolute', bottom: 8, left: 8,
-            background: '#111', color: '#fff', borderRadius: 6,
-            padding: '2px 8px', fontSize: 11, fontWeight: 600,
+            background: 'rgba(201,168,76,0.9)', color: '#0B0A07',
+            borderRadius: 5, padding: '2px 8px',
+            fontSize: 9, fontWeight: 700, letterSpacing: '0.05em',
+            textTransform: 'uppercase',
           }}>
-            + top-up
+            + Top-up
           </div>
         )}
       </div>
 
       {/* Info */}
-      <div style={{ flex: 1, padding: '20px 20px 20px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <div style={{
+        flex: 1, padding: '20px 22px',
+        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+      }}>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 17 }}>
-            {listing?.brand} {listing?.model}
+          <div style={{
+            display: 'flex', alignItems: 'flex-start',
+            justifyContent: 'space-between', gap: 8, marginBottom: 4,
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#F0EDE8' }}>
+              {listing?.brand} {listing?.model}
+            </div>
+            {tier && (
+              <span style={{
+                fontSize: 9, fontWeight: 700, color: tier.color,
+                background: tier.bg, borderRadius: 5,
+                padding: '3px 7px', letterSpacing: '0.04em',
+                textTransform: 'uppercase', whiteSpace: 'nowrap', flexShrink: 0,
+              }}>
+                {tier.label}
+              </span>
+            )}
           </div>
           {listing?.reference && (
-            <div style={{ color: '#888', fontSize: 13, marginTop: 2 }}>Ref. {listing.reference}</div>
+            <div style={{ color: '#353548', fontSize: 12, marginBottom: 14 }}>
+              Ref. {listing.reference}
+            </div>
           )}
 
-          <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             <Tag label="User" value={profile?.name || 'Unknown'} />
             <Tag label="Country" value={profile?.country || '—'} />
-            <Tag label="Price" value={TIER_LABELS[listing?.price_tier] || listing?.price_tier || '—'} />
-            <Tag label="Geo" value={`${GEO_ICONS[listing?.geo_scope] ?? ''} ${listing?.geo_scope || '—'}`} />
-            <Tag label="Top-up" value={listing?.open_to_topup ? 'Yes' : 'No'} />
+            {listing?.geo_scope && (
+              <Tag label="Geo" value={`${GEO_ICONS[listing.geo_scope] ?? ''} ${listing.geo_scope}`} />
+            )}
           </div>
         </div>
 
@@ -145,11 +209,14 @@ function MatchCard({ profile, listing, onChat }) {
           onClick={onChat}
           style={{
             marginTop: 16, alignSelf: 'flex-start',
-            background: '#111', color: '#fff',
+            background: '#C9A84C', color: '#0B0A07',
             border: 'none', borderRadius: 8,
-            padding: '8px 20px', fontSize: 14, fontWeight: 600,
-            cursor: 'pointer',
+            padding: '8px 20px', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', letterSpacing: '0.02em',
+            transition: 'background 0.15s',
           }}
+          onMouseEnter={e => e.currentTarget.style.background = '#E8C96A'}
+          onMouseLeave={e => e.currentTarget.style.background = '#C9A84C'}
         >
           Open Chat
         </button>
@@ -161,10 +228,12 @@ function MatchCard({ profile, listing, onChat }) {
 function Tag({ label, value }) {
   return (
     <span style={{
-      background: '#f3f4f6', borderRadius: 6,
-      padding: '3px 10px', fontSize: 12, color: '#444',
+      background: '#161624',
+      border: '1px solid #1E1E2C',
+      borderRadius: 6,
+      padding: '3px 10px', fontSize: 12, color: '#525265',
     }}>
-      <span style={{ color: '#999' }}>{label}: </span>{value}
+      <span style={{ color: '#2A2A3A' }}>{label}: </span>{value}
     </span>
   )
 }

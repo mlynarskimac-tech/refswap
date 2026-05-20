@@ -38,7 +38,11 @@ function AppRoutes() {
       })
   }, [user])
 
-  if (loading || profileLoading) return <div>Loading...</div>
+  if (loading || profileLoading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#454558', fontSize: 14 }}>
+      Loading…
+    </div>
+  )
 
   const showHeader = user && !AUTH_ROUTES.includes(location.pathname)
 
@@ -58,7 +62,9 @@ function AppRoutes() {
           element={
             !user ? <Navigate to="/login" /> :
             !profile ? <CompleteProfile onComplete={() => window.location.reload()} /> :
-            <div style={{ padding: 24 }}>Welcome, {profile.name}!</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 'calc(100vh - 60px)', color: '#4A4A5A', fontSize: 14 }}>
+              Welcome back, {profile.name}.
+            </div>
           }
         />
       </Routes>
