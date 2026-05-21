@@ -350,7 +350,7 @@ function WatchCard({ listing, liked, matched, onLike, onReport, onOpen }) {
             Report
           </button>
           <button
-            onClick={() => onLike(listing.id)}
+            onClick={(e) => { e.stopPropagation(); onLike(listing.id); }}
             disabled={matched}
             title={matched ? 'Manage this match in chat' : liked ? 'Remove like' : 'Like this watch'}
             style={{
