@@ -90,10 +90,10 @@ export default function ListingDetail() {
 
     setLiking(true)
 
-    const { error: likeError } = await supabase.from('likes').insert({
+    const { error: likeError } = await supabase.from('likes').upsert({
       from_user: user.id,
       to_listing: listing.id,
-    })
+    }, { onConflict: 'from_user,to_listing', ignoreDuplicates: true })
 
     if (likeError) {
       console.error('Like insert failed:', likeError)

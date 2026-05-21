@@ -17,11 +17,13 @@ export default function Header() {
   }, [user])
 
   async function fetchBadges() {
-    const { data: matches } = await supabase
+    const { data: matches, error: matchesError } = await supabase
       .from('matches')
       .select('id, created_at')
       .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
       .eq('status', 'active')
+
+    console.log('[badges] matches:', matches, matchesError)
 
     if (!matches || matches.length === 0) {
       setUnreadMessages(0)
@@ -33,11 +35,13 @@ export default function Header() {
     setNewMatches(matches.filter(m => m.created_at > lastSeenMatches).length)
 
     const matchIds = matches.map(m => m.id)
-    const { data: messages } = await supabase
+    const { data: messages, error: messagesError } = await supabase
       .from('messages')
       .select('match_id, created_at, sender_id')
       .in('match_id', matchIds)
       .neq('sender_id', user.id)
+
+    console.log('[badges] messages:', messages, messagesError)
 
     let unread = 0
     for (const msg of messages || []) {
