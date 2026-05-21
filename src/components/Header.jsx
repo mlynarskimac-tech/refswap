@@ -31,8 +31,7 @@ export default function Header() {
       return
     }
 
-    const lastSeenMatches = localStorage.getItem('last_seen_matches') || new Date(0).toISOString()
-    setNewMatches(matches.filter(m => m.created_at > lastSeenMatches).length)
+    setNewMatches(matches.length)
 
     const matchIds = matches.map(m => m.id)
     const { data: messages, error: messagesError } = await supabase
@@ -43,11 +42,7 @@ export default function Header() {
 
     console.log('[badges] messages:', messages, messagesError)
 
-    let unread = 0
-    for (const msg of messages || []) {
-      const lastSeen = localStorage.getItem(`seen_chat_${msg.match_id}`) || new Date(0).toISOString()
-      if (msg.created_at > lastSeen) unread++
-    }
+    const unread = (messages || []).filter(m => m.sender_id !== user.id).length
     setUnreadMessages(unread)
   }
 
