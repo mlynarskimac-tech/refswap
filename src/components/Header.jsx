@@ -39,11 +39,7 @@ export default function Header() {
       .in('match_id', matchIds)
       .neq('sender_id', user.id)
 
-    let unread = 0
-    for (const msg of messages || []) {
-      const lastRead = localStorage.getItem(`lastReadMessage_${msg.match_id}`)
-      if (!lastRead || msg.created_at > lastRead) unread++
-    }
+    const unread = (messages || []).filter(m => m.sender_id !== user.id).length
     setUnreadMessages(unread)
     console.log('[header] matchCount:', matches.length, 'unreadMessages:', unread)
   }
