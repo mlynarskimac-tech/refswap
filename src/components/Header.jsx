@@ -9,6 +9,7 @@ export default function Header() {
   const { user } = useAuth()
   const [unreadMessages, setUnreadMessages] = useState(0)
   const [matchCount, setMatchCount] = useState(0)
+  const [firstUnreadMatchId, setFirstUnreadMatchId] = useState(null)
 
   useEffect(() => {
     if (!user) return
@@ -39,9 +40,10 @@ export default function Header() {
       .in('match_id', matchIds)
       .neq('sender_id', user.id)
 
-    const unread = (messages || []).filter(m => m.sender_id !== user.id).length
-    setUnreadMessages(unread)
-    console.log('[header] matchCount:', matches.length, 'unreadMessages:', unread)
+    const unreadMsgs = (messages || []).filter(m => m.sender_id !== user.id)
+    setUnreadMessages(unreadMsgs.length)
+    setFirstUnreadMatchId(unreadMsgs.length > 0 ? unreadMsgs[0].match_id : null)
+    console.log('[header] matchCount:', matches.length, 'unreadMessages:', unreadMsgs.length)
   }
 
   async function handleSignOut() {
@@ -75,7 +77,7 @@ export default function Header() {
         <NavLink to="/browse">Browse</NavLink>
         <NavLink to="/my-watch">My Watch</NavLink>
         {matchCount > 0 && <NavLink to="/matches">Matches</NavLink>}
-        {unreadMessages > 0 && <NavLink to="/matches">Messages</NavLink>}
+        {unreadMessages > 0 && firstUnreadMatchId && <NavLink to={`/chat/${firstUnreadMatchId}`}>Messages</NavLink>}
         <button
           onClick={handleSignOut}
           style={{
