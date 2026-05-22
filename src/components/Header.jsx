@@ -1,54 +1,51 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { supabase } from '../supabase'
 
 export default function Header() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user } = useAuth()
   const [unreadMessages, setUnreadMessages] = useState(0)
-  const [newMatches, setNewMatches] = useState(0)
+  const [matchCount, setMatchCount] = useState(0)
 
   useEffect(() => {
     if (!user) return
     fetchBadges()
     const interval = setInterval(fetchBadges, 30000)
     return () => clearInterval(interval)
-  }, [user])
+  }, [user, location])
 
   async function fetchBadges() {
-    const { data: matches, error: matchesError } = await supabase
+    const { data: matches } = await supabase
       .from('matches')
-      .select('id, created_at')
+      .select('id')
       .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
       .eq('status', 'active')
 
-    console.log('[badges] matches:', matches, matchesError)
-
     if (!matches || matches.length === 0) {
       setUnreadMessages(0)
-      setNewMatches(0)
+      setMatchCount(0)
       return
     }
 
-    const lastSeenMatches = localStorage.getItem('last_seen_matches') || new Date(0).toISOString()
-    setNewMatches(matches.filter(m => m.created_at > lastSeenMatches).length)
+    setMatchCount(matches.length)
 
     const matchIds = matches.map(m => m.id)
-    const { data: messages, error: messagesError } = await supabase
+    const { data: messages } = await supabase
       .from('messages')
       .select('match_id, created_at, sender_id')
       .in('match_id', matchIds)
       .neq('sender_id', user.id)
 
-    console.log('[badges] messages:', messages, messagesError)
-
     let unread = 0
     for (const msg of messages || []) {
-      const lastSeen = localStorage.getItem(`seen_chat_${msg.match_id}`) || new Date(0).toISOString()
-      if (msg.created_at > lastSeen) unread++
+      const lastRead = localStorage.getItem(`lastReadMessage_${msg.match_id}`)
+      if (!lastRead || msg.created_at > lastRead) unread++
     }
     setUnreadMessages(unread)
+    console.log('[header] matchCount:', matches.length, 'unreadMessages:', unread)
   }
 
   async function handleSignOut() {
@@ -81,9 +78,8 @@ export default function Header() {
       <nav style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
         <NavLink to="/browse">Browse</NavLink>
         <NavLink to="/my-watch">My Watch</NavLink>
-        <NavLink to="/matches" unread={unreadMessages} newMatch={newMatches}>
-          Matches
-        </NavLink>
+        {matchCount > 0 && <NavLink to="/matches">Matches</NavLink>}
+        {unreadMessages > 0 && <NavLink to="/matches">Messages</NavLink>}
         <button
           onClick={handleSignOut}
           style={{
@@ -113,14 +109,11 @@ export default function Header() {
   )
 }
 
-function NavLink({ to, children, unread = 0, newMatch = 0 }) {
+function NavLink({ to, children }) {
   return (
     <Link
       to={to}
       style={{
-        position: 'relative',
-        display: 'inline-flex',
-        alignItems: 'center',
         color: '#646478',
         fontSize: 14,
         fontWeight: 500,
@@ -138,33 +131,6 @@ function NavLink({ to, children, unread = 0, newMatch = 0 }) {
       }}
     >
       {children}
-      {unread > 0 && <Badge count={unread} color="#ef4444" offset={unread > 0 && newMatch > 0 ? -18 : -2} />}
-      {newMatch > 0 && <Badge count={newMatch} color="#22c55e" offset={-2} />}
     </Link>
-  )
-}
-
-function Badge({ count, color, offset }) {
-  return (
-    <span style={{
-      position: 'absolute',
-      top: 2,
-      right: offset,
-      background: color,
-      color: '#fff',
-      borderRadius: 999,
-      fontSize: 9,
-      fontWeight: 700,
-      minWidth: 15,
-      height: 15,
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '0 3px',
-      lineHeight: 1,
-      border: '1.5px solid #0A0A12',
-    }}>
-      {count > 99 ? '99+' : count}
-    </span>
   )
 }

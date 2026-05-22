@@ -68,7 +68,7 @@ export default function Chat() {
     ])
     if (!error) {
       setMessages(msgs || [])
-      localStorage.setItem(`seen_chat_${matchId}`, new Date().toISOString())
+      localStorage.setItem(`lastReadMessage_${matchId}`, new Date().toISOString())
     }
     if (matchData) setMatchStatus(matchData.status)
   }

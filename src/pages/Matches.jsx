@@ -23,7 +23,6 @@ export default function Matches() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    localStorage.setItem('last_seen_matches', new Date().toISOString())
     fetchMatches()
   }, [user.id])
 
@@ -36,6 +35,7 @@ export default function Matches() {
 
     if (!rawMatches || rawMatches.length === 0) {
       setMatches([])
+      localStorage.setItem('lastSeenMatchesCount', '0')
       setLoading(false)
       return
     }
@@ -64,6 +64,7 @@ export default function Matches() {
         listing: listingMap[otherListingId] || null,
       }
     }))
+    localStorage.setItem('lastSeenMatchesCount', String(rawMatches.length))
     setLoading(false)
   }
 
