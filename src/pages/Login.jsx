@@ -115,16 +115,6 @@ export default function Login() {
               marginTop: 16,
             }} />
 
-            {/* Tagline */}
-            <div style={{
-              marginTop: 10,
-              fontFamily: "'Cormorant Garamond', serif",
-              fontStyle: 'italic',
-              fontSize: 14,
-              color: 'rgba(245,240,232,0.45)',
-            }}>
-              Trade watches. Not messages.
-            </div>
           </div>
 
           {/* ── BOTTOM SECTION (card body) ── */}
