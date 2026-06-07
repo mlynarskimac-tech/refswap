@@ -1,13 +1,27 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 
+const gold    = '#A9823F'
+const ink     = '#1C1B19'
+const ink2    = '#6E6A62'
+const ink3    = '#A6A199'
+const stroke  = '#E2DED6'
+const surface = '#FFFFFF'
+const surface2= '#F0EEE9'
+const bg      = '#FBFAF8'
+const green   = '#3F9D6E'
+const red     = '#D24B4B'
+const serif   = "'Cormorant Garamond', serif"
+const sans    = "'Inter', system-ui, sans-serif"
+const mono    = "'Spline Sans Mono', ui-monospace, monospace"
+
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email,      setEmail]      = useState('')
+  const [password,   setPassword]   = useState('')
   const [isRegister, setIsRegister] = useState(false)
-  const [message, setMessage] = useState('')
-  const [isSuccess, setIsSuccess] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [message,    setMessage]    = useState('')
+  const [isSuccess,  setIsSuccess]  = useState(false)
+  const [loading,    setLoading]    = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -34,7 +48,7 @@ export default function Login() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0B0B14',
+      background: bg,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -43,31 +57,36 @@ export default function Login() {
       <div style={{
         width: '100%',
         maxWidth: 400,
-        background: '#111120',
-        border: '1px solid #1E1E2E',
-        borderRadius: 20,
+        background: surface,
+        border: `1px solid ${stroke}`,
+        borderRadius: 14,
         padding: '40px 36px',
+        boxShadow: '0 10px 40px -20px rgba(0,0,0,.15)',
       }}>
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{
-            fontSize: 26, fontWeight: 800, letterSpacing: '-0.5px',
-            color: '#C9A84C', marginBottom: 6,
+            fontFamily: serif, fontWeight: 600, fontSize: 28,
+            letterSpacing: '.01em', color: ink, marginBottom: 6,
           }}>
-            RefSwap
+            Ref<span style={{ color: gold }}>Swap</span>
           </div>
-          <div style={{ fontSize: 13, color: '#3A3A4C', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            Premium watch exchange
+          <div style={{
+            fontFamily: mono, fontSize: 10.5, letterSpacing: '.12em',
+            textTransform: 'uppercase', color: ink3,
+          }}>
+            Luxury watch exchange
           </div>
         </div>
 
         {/* Tab switcher */}
         <div style={{
           display: 'flex',
-          background: '#0B0B14',
-          border: '1px solid #1A1A28',
+          background: surface2,
+          border: `1px solid ${stroke}`,
           borderRadius: 10,
           padding: 3,
-          marginBottom: 28,
+          marginBottom: 24,
           gap: 3,
         }}>
           {[{ label: 'Sign in', val: false }, { label: 'Sign up', val: true }].map(({ label, val }) => {
@@ -78,14 +97,13 @@ export default function Login() {
                 onClick={() => { setIsRegister(val); setMessage('') }}
                 style={{
                   flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                  background: active ? '#1E1E30' : 'transparent',
-                  color: active ? '#F0EDE8' : '#3A3A50',
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  transition: 'all 0.15s',
+                  background: active ? surface : 'transparent',
+                  color: active ? ink : ink3,
+                  fontFamily: sans, fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', transition: 'all .15s',
+                  boxShadow: active ? `0 1px 4px rgba(0,0,0,.08)` : 'none',
                 }}
-              >
-                {label}
-              </button>
+              >{label}</button>
             )
           })}
         </div>
@@ -112,14 +130,14 @@ export default function Login() {
             disabled={loading}
             style={{
               marginTop: 6,
-              background: loading ? '#1E1E2E' : '#C9A84C',
-              color: loading ? '#3A3A50' : '#0B0A07',
+              background: loading ? stroke : gold,
+              color: loading ? ink3 : '#fff',
               border: 'none', borderRadius: 10,
               padding: '13px 0',
-              fontSize: 14, fontWeight: 700,
+              fontFamily: sans, fontSize: 14, fontWeight: 600,
               cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background 0.15s',
-              letterSpacing: '0.02em',
+              transition: 'background .15s',
+              letterSpacing: '.01em',
             }}
           >
             {loading ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
@@ -129,10 +147,10 @@ export default function Login() {
         {message && (
           <div style={{
             marginTop: 16, padding: '10px 14px', borderRadius: 8,
-            background: isSuccess ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
-            border: `1px solid ${isSuccess ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`,
-            color: isSuccess ? '#4ade80' : '#f87171',
-            fontSize: 13, lineHeight: 1.5,
+            background: isSuccess ? `${green}10` : `${red}10`,
+            border: `1px solid ${isSuccess ? green + '44' : red + '44'}`,
+            color: isSuccess ? green : red,
+            fontFamily: sans, fontSize: 13, lineHeight: 1.5,
           }}>
             {message}
           </div>
@@ -143,12 +161,13 @@ export default function Login() {
 }
 
 const inputStyle = {
-  background: '#0B0B14',
-  border: '1px solid #1E1E2E',
+  background: '#FBFAF8',
+  border: '1px solid #E2DED6',
   borderRadius: 10,
   padding: '12px 14px',
+  fontFamily: "'Inter', system-ui, sans-serif",
   fontSize: 14,
-  color: '#F0EDE8',
+  color: '#1C1B19',
   outline: 'none',
   width: '100%',
 }
