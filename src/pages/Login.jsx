@@ -1,19 +1,10 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 
-const gold    = '#A9823F'
-const ink     = '#1C1B19'
-const ink2    = '#6E6A62'
-const ink3    = '#A6A199'
-const stroke  = '#E2DED6'
-const surface = '#FFFFFF'
-const surface2= '#F0EEE9'
-const bg      = '#FBFAF8'
-const green   = '#3F9D6E'
-const red     = '#D24B4B'
-const serif   = "'Cormorant Garamond', serif"
-const sans    = "'Inter', system-ui, sans-serif"
-const mono    = "'Spline Sans Mono', ui-monospace, monospace"
+const GOLD   = '#C9A96E'
+const DARK   = '#1C1208'
+const RED    = '#D24B4B'
+const GREEN  = '#3F9D6E'
 
 export default function Login() {
   const [email,      setEmail]      = useState('')
@@ -23,6 +14,7 @@ export default function Login() {
   const [isSuccess,  setIsSuccess]  = useState(false)
   const [loading,    setLoading]    = useState(false)
 
+  // ── Auth logic (unchanged) ───────────────────────────────────────────────
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
@@ -46,128 +38,269 @@ export default function Login() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: bg,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 24,
-    }}>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,400&display=swap');
+        .rs-input:focus { border-color: ${GOLD} !important; outline: none; }
+      `}</style>
+
+      {/* Page background */}
       <div style={{
-        width: '100%',
-        maxWidth: 400,
-        background: surface,
-        border: `1px solid ${stroke}`,
-        borderRadius: 14,
-        padding: '40px 36px',
-        boxShadow: '0 10px 40px -20px rgba(0,0,0,.15)',
+        minHeight: '100vh',
+        background: '#F8F6F1',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        fontFamily: "'Inter', system-ui, sans-serif",
       }}>
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{
-            fontFamily: serif, fontWeight: 600, fontSize: 28,
-            letterSpacing: '.01em', color: ink, marginBottom: 6,
-          }}>
-            Ref<span style={{ color: gold }}>Swap</span>
-          </div>
-          <div style={{
-            fontFamily: mono, fontSize: 10.5, letterSpacing: '.12em',
-            textTransform: 'uppercase', color: ink3,
-          }}>
-            Luxury watch exchange
-          </div>
-        </div>
-
-        {/* Tab switcher */}
+        {/* Card */}
         <div style={{
-          display: 'flex',
-          background: surface2,
-          border: `1px solid ${stroke}`,
-          borderRadius: 10,
-          padding: 3,
-          marginBottom: 24,
-          gap: 3,
+          width: '100%',
+          maxWidth: 420,
+          background: '#FFFFFF',
+          border: '0.5px solid #E8E2D9',
+          borderRadius: 20,
+          overflow: 'hidden',
         }}>
-          {[{ label: 'Sign in', val: false }, { label: 'Sign up', val: true }].map(({ label, val }) => {
-            const active = isRegister === val
-            return (
-              <button
-                key={label}
-                onClick={() => { setIsRegister(val); setMessage('') }}
-                style={{
-                  flex: 1, padding: '8px 0', borderRadius: 8, border: 'none',
-                  background: active ? surface : 'transparent',
-                  color: active ? ink : ink3,
-                  fontFamily: sans, fontSize: 13, fontWeight: 600,
-                  cursor: 'pointer', transition: 'all .15s',
-                  boxShadow: active ? `0 1px 4px rgba(0,0,0,.08)` : 'none',
-                }}
-              >{label}</button>
-            )
-          })}
-        </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <input
-            type="email"
-            placeholder="Email address"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            required
-            style={inputStyle}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-            style={inputStyle}
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              marginTop: 6,
-              background: loading ? stroke : gold,
-              color: loading ? ink3 : '#fff',
-              border: 'none', borderRadius: 10,
-              padding: '13px 0',
-              fontFamily: sans, fontSize: 14, fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background .15s',
-              letterSpacing: '.01em',
-            }}
-          >
-            {loading ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
-          </button>
-        </form>
-
-        {message && (
+          {/* ── TOP SECTION (dark header) ── */}
           <div style={{
-            marginTop: 16, padding: '10px 14px', borderRadius: 8,
-            background: isSuccess ? `${green}10` : `${red}10`,
-            border: `1px solid ${isSuccess ? green + '44' : red + '44'}`,
-            color: isSuccess ? green : red,
-            fontFamily: sans, fontSize: 13, lineHeight: 1.5,
+            position: 'relative',
+            background: DARK,
+            padding: '2.5rem 2.5rem 2rem',
+            overflow: 'hidden',
           }}>
-            {message}
+            {/* Decorative circles */}
+            <div style={{
+              position: 'absolute', top: -70, right: -70,
+              width: 220, height: 220, borderRadius: '50%',
+              border: '1px solid rgba(201,169,110,0.2)',
+              pointerEvents: 'none',
+            }} />
+            <div style={{
+              position: 'absolute', top: -20, right: -20,
+              width: 140, height: 140, borderRadius: '50%',
+              border: '1px solid rgba(201,169,110,0.12)',
+              pointerEvents: 'none',
+            }} />
+
+            {/* Logo */}
+            <div style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontSize: 34,
+              lineHeight: 1,
+              position: 'relative',
+            }}>
+              <span style={{ fontWeight: 600, color: '#F5F0E8' }}>Ref</span>
+              <span style={{ fontWeight: 400, fontStyle: 'italic', color: GOLD }}>Swap</span>
+            </div>
+
+            {/* Eyebrow */}
+            <div style={{
+              marginTop: 10,
+              fontSize: 10,
+              letterSpacing: 4,
+              color: 'rgba(201,169,110,0.55)',
+              textTransform: 'uppercase',
+              fontFamily: "'Inter', system-ui, sans-serif",
+            }}>
+              Luxury Watch Exchange
+            </div>
+
+            {/* Decorative line */}
+            <div style={{
+              width: 32, height: 1,
+              background: GOLD,
+              marginTop: 16,
+            }} />
+
+            {/* Tagline */}
+            <div style={{
+              marginTop: 10,
+              fontFamily: "'Cormorant Garamond', serif",
+              fontStyle: 'italic',
+              fontSize: 14,
+              color: 'rgba(245,240,232,0.45)',
+            }}>
+              Trade watches. Not messages.
+            </div>
           </div>
-        )}
+
+          {/* ── BOTTOM SECTION (card body) ── */}
+          <div style={{ padding: '2rem 2.5rem 2.5rem' }}>
+
+            {/* Tab switcher */}
+            <div style={{
+              display: 'flex',
+              background: '#F4F1EB',
+              borderRadius: 10,
+              padding: 3,
+              marginBottom: 24,
+              gap: 3,
+            }}>
+              {[
+                { label: 'Sign in',        val: false },
+                { label: 'Create account', val: true  },
+              ].map(({ label, val }) => {
+                const active = isRegister === val
+                return (
+                  <button
+                    key={label}
+                    onClick={() => { setIsRegister(val); setMessage('') }}
+                    style={{
+                      flex: 1,
+                      padding: '8px 0',
+                      borderRadius: 8,
+                      border: active ? '0.5px solid #E8E2D9' : 'none',
+                      background: active ? '#FFFFFF' : 'transparent',
+                      color: active ? DARK : '#999999',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'all .15s',
+                      fontFamily: "'Inter', system-ui, sans-serif",
+                    }}
+                  >{label}</button>
+                )
+              })}
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {/* Email field */}
+              <div>
+                <label style={labelStyle}>Email address</label>
+                <input
+                  type="email"
+                  className="rs-input"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Password field */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                  <span style={labelStyle}>Password</span>
+                  {!isRegister && (
+                    <span style={{
+                      fontSize: 12,
+                      color: GOLD,
+                      cursor: 'pointer',
+                    }}>Forgot password?</span>
+                  )}
+                </div>
+                <input
+                  type="password"
+                  className="rs-input"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Feedback message */}
+              {message && (
+                <div style={{
+                  padding: '10px 14px', borderRadius: 8,
+                  background: isSuccess ? 'rgba(63,157,110,0.08)' : 'rgba(210,75,75,0.08)',
+                  border: `1px solid ${isSuccess ? 'rgba(63,157,110,0.3)' : 'rgba(210,75,75,0.3)'}`,
+                  color: isSuccess ? GREEN : RED,
+                  fontSize: 13, lineHeight: 1.5,
+                }}>
+                  {message}
+                </div>
+              )}
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  background: loading ? '#E8E2D9' : DARK,
+                  color: loading ? '#999' : GOLD,
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: '13px 0',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  letterSpacing: 1,
+                  textTransform: 'uppercase',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  transition: 'background .15s',
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                }}
+              >
+                {loading ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
+              </button>
+
+              {/* OR separator */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12, margin: '4px 0',
+              }}>
+                <div style={{ flex: 1, height: 1, background: '#E8E2D9' }} />
+                <span style={{ fontSize: 11, color: '#A09880', letterSpacing: 1 }}>OR</span>
+                <div style={{ flex: 1, height: 1, background: '#E8E2D9' }} />
+              </div>
+
+            </form>
+
+            {/* Trust row */}
+            <div style={{
+              borderTop: '0.5px solid #F0EDE7',
+              paddingTop: 16,
+              marginTop: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 10,
+              flexWrap: 'wrap',
+            }}>
+              {['UK · DE · US', '€3k – €50k', 'P2P exchange'].map((item, i, arr) => (
+                <span key={item} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 11, color: '#A09880' }}>{item}</span>
+                  {i < arr.length - 1 && (
+                    <span style={{
+                      width: 4, height: 4, borderRadius: '50%',
+                      background: GOLD, display: 'inline-block', flexShrink: 0,
+                    }} />
+                  )}
+                </span>
+              ))}
+            </div>
+
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
-const inputStyle = {
-  background: '#FBFAF8',
-  border: '1px solid #E2DED6',
-  borderRadius: 10,
-  padding: '12px 14px',
+const labelStyle = {
+  display: 'block',
+  marginBottom: 6,
+  fontSize: 10,
+  letterSpacing: 2,
+  textTransform: 'uppercase',
+  color: '#A09880',
   fontFamily: "'Inter', system-ui, sans-serif",
-  fontSize: 14,
-  color: '#1C1B19',
-  outline: 'none',
+}
+
+const inputStyle = {
   width: '100%',
+  border: '1px solid #E8E2D9',
+  borderRadius: 10,
+  padding: '11px 14px',
+  background: '#FDFCFB',
+  fontSize: 14,
+  color: '#1C1208',
+  fontFamily: "'Inter', system-ui, sans-serif",
+  boxSizing: 'border-box',
+  transition: 'border-color .15s',
 }
