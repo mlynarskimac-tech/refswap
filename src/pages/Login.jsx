@@ -230,14 +230,6 @@ export default function Login() {
                 {loading ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
               </button>
 
-              {/* OR separator */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 12, margin: '4px 0',
-              }}>
-                <div style={{ flex: 1, height: 1, background: '#E8E2D9' }} />
-                <span style={{ fontSize: 11, color: '#A09880', letterSpacing: 1 }}>OR</span>
-                <div style={{ flex: 1, height: 1, background: '#E8E2D9' }} />
-              </div>
 
             </form>
 
