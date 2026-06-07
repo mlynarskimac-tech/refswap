@@ -1,275 +1,298 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
+import { PhotoBox } from '../components/primitives'
 import ReportModal from '../components/ReportModal'
+
+const gold    = '#A9823F'
+const goldSoft= '#EFE3CC'
+const ink     = '#1C1B19'
+const ink2    = '#6E6A62'
+const ink3    = '#A6A199'
+const stroke  = '#E2DED6'
+const surface = '#FFFFFF'
+const surface2= '#F0EEE9'
+const bg      = '#FBFAF8'
+const green   = '#3F9D6E'
+const red     = '#D24B4B'
+const serif   = "'Cormorant Garamond', serif"
+const sans    = "'Inter', system-ui, sans-serif"
+const mono    = "'Spline Sans Mono', ui-monospace, monospace"
+
+function MatchesEmpty() {
+  return (
+    <div style={{
+      marginTop: 40, border: `1px dashed #D4CFC5`, borderRadius: 16,
+      padding: '60px 24px', textAlign: 'center',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+    }}>
+      <span style={{ fontSize: 40, color: ink3 }}>⌚</span>
+      <span style={{ fontFamily: serif, fontSize: 24, color: ink }}>No messages yet</span>
+      <span style={{ fontFamily: sans, fontSize: 13.5, color: ink3, maxWidth: 320, lineHeight: 1.5 }}>
+        When you match with someone, your conversation will appear here.
+      </span>
+    </div>
+  )
+}
 
 export default function Chat() {
   const { matchId } = useParams()
-  const { user } = useAuth()
-  const navigate = useNavigate()
+  const { user }    = useAuth()
+  const navigate    = useNavigate()
 
-  const [other, setOther] = useState(null)
-  const [messages, setMessages] = useState([])
-  const [text, setText] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [reportOpen, setReportOpen] = useState(false)
-  const [matchStatus, setMatchStatus] = useState('active')
-  const [closing, setClosing] = useState(false)
+  const [matches,     setMatches]     = useState([])
+  const [activeMatch, setActiveMatch] = useState(null)
+  const [messages,    setMessages]    = useState([])
+  const [myListing,   setMyListing]   = useState(null)
+  const [text,        setText]        = useState('')
+  const [loading,     setLoading]     = useState(true)
+  const [reportOpen,  setReportOpen]  = useState(false)
   const bottomRef = useRef(null)
 
+  // Load all matches + my listing once
   useEffect(() => {
-    loadChat()
-    const interval = setInterval(fetchMessages, 3000)
-    return () => clearInterval(interval)
-  }, [matchId])
+    loadAll()
+  }, [user.id])
+
+  // When matchId param changes, switch active
+  useEffect(() => {
+    if (matches.length === 0) return
+    const target = matchId
+      ? matches.find(m => m.matchId === matchId)
+      : matches[0]
+    if (target) setActiveMatch(target)
+  }, [matchId, matches])
+
+  // Poll messages for active match
+  useEffect(() => {
+    if (!activeMatch) return
+    fetchMessages(activeMatch.matchId)
+    const id = setInterval(() => fetchMessages(activeMatch.matchId), 3000)
+    return () => clearInterval(id)
+  }, [activeMatch?.matchId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  async function loadChat() {
-    const { data: match, error } = await supabase
-      .from('matches')
-      .select('user_a, user_b, listing_a, listing_b, status')
-      .eq('id', matchId)
-      .single()
+  async function loadAll() {
+    const [{ data: rawMatches }, { data: mine }] = await Promise.all([
+      supabase.from('matches').select('*')
+        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`).eq('status', 'active')
+        .order('created_at', { ascending: false }),
+      supabase.from('listings').select('id, brand, model, photos')
+        .eq('user_id', user.id).eq('is_active', true).maybeSingle(),
+    ])
+    setMyListing(mine)
 
-    if (error || !match) {
-      navigate('/matches')
-      return
-    }
+    if (!rawMatches || rawMatches.length === 0) { setLoading(false); return }
 
-    setMatchStatus(match.status)
-    const otherId = match.user_a === user.id ? match.user_b : match.user_a
-    const otherListingId = match.user_a === user.id ? match.listing_b : match.listing_a
+    const otherUserIds    = rawMatches.map(m => m.user_a === user.id ? m.user_b    : m.user_a)
+    const otherListingIds = rawMatches.map(m => m.user_a === user.id ? m.listing_b : m.listing_a)
 
-    const [{ data: profile }, { data: listing }] = await Promise.all([
-      supabase.from('profiles').select('name').eq('id', otherId).single(),
-      supabase.from('listings').select('brand, model, photos').eq('id', otherListingId).single(),
+    const [{ data: profiles }, { data: listings }] = await Promise.all([
+      supabase.from('profiles').select('id, name, country').in('id', otherUserIds),
+      supabase.from('listings').select('id, brand, model, photos').in('id', otherListingIds),
     ])
 
-    setOther({
-      name: profile?.name ?? 'Unknown',
-      brand: listing?.brand ?? '',
-      model: listing?.model ?? '',
-      photo: listing?.photos?.[0] ?? null,
-      userId: otherId,
-      listingId: otherListingId,
+    const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]))
+    const listingMap = Object.fromEntries((listings || []).map(l => [l.id, l]))
+
+    const enriched = rawMatches.map(m => {
+      const otherId     = m.user_a === user.id ? m.user_b    : m.user_a
+      const otherListId = m.user_a === user.id ? m.listing_b : m.listing_a
+      return {
+        matchId:    m.id,
+        status:     m.status,
+        createdAt:  m.created_at,
+        profile:    profileMap[otherId]    || null,
+        listing:    listingMap[otherListId]|| null,
+        userId:     otherId,
+        listingId:  otherListId,
+      }
     })
-    await fetchMessages()
+    setMatches(enriched)
+
+    const target = matchId
+      ? enriched.find(m => m.matchId === matchId)
+      : enriched[0]
+    if (target) {
+      setActiveMatch(target)
+      await fetchMessages(target.matchId)
+    }
     setLoading(false)
   }
 
-  async function fetchMessages() {
-    const [{ data: msgs, error }, { data: matchData }] = await Promise.all([
-      supabase.from('messages').select('*').eq('match_id', matchId).order('created_at', { ascending: true }),
-      supabase.from('matches').select('status').eq('id', matchId).single(),
-    ])
-    if (!error) {
-      setMessages(msgs || [])
-      localStorage.setItem(`lastReadMessage_${matchId}`, new Date().toISOString())
-    }
-    if (matchData) setMatchStatus(matchData.status)
+  async function fetchMessages(mid) {
+    const { data: msgs } = await supabase
+      .from('messages').select('*').eq('match_id', mid)
+      .order('created_at', { ascending: true })
+    setMessages(msgs || [])
+    localStorage.setItem(`lastReadMessage_${mid}`, new Date().toISOString())
+  }
+
+  function selectMatch(m) {
+    setActiveMatch(m)
+    setMessages([])
+    navigate(`/chat/${m.matchId}`, { replace: true })
+  }
+
+  async function handleSend(e) {
+    if (e) e.preventDefault()
+    const content = text.trim()
+    if (!content || !activeMatch) return
+    setText('')
+    const { error } = await supabase.from('messages').insert({
+      match_id: activeMatch.matchId, sender_id: user.id, content,
+    })
+    if (!error) await fetchMessages(activeMatch.matchId)
+    else setText(content)
   }
 
   async function handleSubmitReport(reason) {
+    if (!activeMatch) return
     await supabase.from('reports').insert({
       reporter_id: user.id,
-      reported_user_id: other.userId,
-      reported_listing_id: other.listingId,
+      reported_user_id: activeMatch.userId,
+      reported_listing_id: activeMatch.listingId,
       reason,
     })
   }
 
-  async function handleCloseMatch() {
-    if (closing) return
-    if (!window.confirm('Are you sure? This will close the match and delete the conversation for both parties.')) return
-    setClosing(true)
-
-    const { data: existing } = await supabase
-      .from('messages')
-      .select('id')
-      .eq('match_id', matchId)
-      .eq('is_system', true)
-      .maybeSingle()
-
-    if (!existing) {
-      await supabase.from('messages').insert({
-        match_id: matchId,
-        sender_id: null,
-        content: 'This match has been closed.',
-        is_system: true,
-      })
-    }
-
-    const { error } = await supabase
-      .from('matches')
-      .update({ status: 'closed' })
-      .eq('id', matchId)
-
-    if (error) {
-      console.error('Failed to close match:', error)
-      setClosing(false)
-      return
-    }
-
-    navigate('/matches')
-  }
-
-  async function handleSend(e) {
-    e.preventDefault()
-    const content = text.trim()
-    if (!content) return
-    setText('')
-
-    const { error } = await supabase
-      .from('messages')
-      .insert({ match_id: matchId, sender_id: user.id, content })
-
-    if (!error) {
-      await fetchMessages()
-    } else {
-      setText(content)
-    }
-  }
-
-  const isClosed = matchStatus === 'closed'
-
   if (loading) return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: 'calc(100vh - 60px)', color: '#353545', fontSize: 14,
-    }}>
-      Loading chat…
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: ink3, fontFamily: sans, fontSize: 14 }}>
+      Loading…
     </div>
   )
 
-  return (
-    <div style={{
-      display: 'flex', flexDirection: 'column',
-      height: 'calc(100vh - 60px)',
-      background: '#0B0B14',
-    }}>
+  if (matches.length === 0) {
+    return (
+      <div style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 26px 40px' }}>
+        <h1 style={{ fontFamily: serif, fontWeight: 600, fontSize: 32, color: ink, margin: '0 0 24px' }}>Messages</h1>
+        <MatchesEmpty />
+      </div>
+    )
+  }
 
-      {/* Chat header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px',
-        background: '#0E0E1C', borderBottom: '1px solid #1A1A28', flexShrink: 0,
+  const m = activeMatch
+
+  return (
+    <div className="chat-wrap" style={{
+      maxWidth: 1180, margin: '0 auto', padding: '20px 26px 30px',
+      display: 'grid', gridTemplateColumns: '260px 1fr', gap: 20, alignItems: 'start',
+    }}>
+      {/* Conversation list */}
+      <div className="chat-list" style={{
+        background: surface, border: `1px solid ${stroke}`, borderRadius: 12, overflow: 'hidden',
       }}>
-        {other.photo ? (
-          <img src={other.photo} alt="" style={{
-            width: 40, height: 40, borderRadius: 8, objectFit: 'cover',
-            border: '1px solid #1E1E2C',
-          }} />
-        ) : (
-          <div style={{
-            width: 40, height: 40, borderRadius: 8,
-            background: '#161624', border: '1px solid #1E1E2C',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, opacity: 0.4,
-          }}>⌚</div>
-        )}
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, color: '#F0EDE8' }}>{other.name}</div>
-          <div style={{ fontSize: 12, color: '#353548' }}>{other.brand} {other.model}</div>
+        <div style={{ padding: '13px 16px', borderBottom: `1px solid ${stroke}`, fontFamily: serif, fontSize: 18, color: ink }}>
+          Messages
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {!isClosed && (
-            <button
-              onClick={handleCloseMatch}
-              disabled={closing}
-              style={{
-                background: 'none', border: 'none',
-                color: '#2A2A3A', fontSize: 12,
-                cursor: closing ? 'default' : 'pointer',
-                padding: '4px 8px', borderRadius: 6,
-                transition: 'color 0.15s',
-              }}
-              onMouseEnter={e => !closing && (e.currentTarget.style.color = '#ef4444')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#2A2A3A')}
-            >
-              {closing ? 'Closing…' : 'Close match'}
+        {matches.map(c => {
+          const active = m && c.matchId === m.matchId
+          return (
+            <button key={c.matchId} onClick={() => selectMatch(c)} style={{
+              all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
+              display: 'flex', gap: 10, alignItems: 'center', width: '100%',
+              padding: '12px 16px', borderBottom: `1px solid ${stroke}`,
+              background: active ? surface2 : 'transparent',
+            }}>
+              <PhotoBox h={38} w={38} r={8} src={c.listing?.photos?.[0]} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: sans, fontSize: 13.5, fontWeight: 600, color: ink }}>
+                  {c.profile?.name || 'Unknown'}
+                </div>
+                <div style={{ fontFamily: sans, fontSize: 11, color: ink3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {c.listing ? `${c.listing.brand} ${c.listing.model}` : 'Say hello'}
+                </div>
+              </div>
             </button>
-          )}
-          <button
-            onClick={() => setReportOpen(true)}
-            style={{
-              background: 'none', border: '1px solid #1E1E2C', borderRadius: 8,
-              padding: '6px 14px', cursor: 'pointer', fontSize: 12, color: '#353548',
-              transition: 'border-color 0.15s, color 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#353548'; e.currentTarget.style.color = '#7A7A8C' }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#1E1E2C'; e.currentTarget.style.color = '#353548' }}
-          >
-            Report
-          </button>
-        </div>
+          )
+        })}
       </div>
 
-      {/* Closed banner */}
-      {isClosed && (
+      {/* Thread */}
+      {m && (
         <div style={{
-          background: 'rgba(239,68,68,0.06)',
-          borderBottom: '1px solid rgba(239,68,68,0.12)',
-          padding: '10px 20px', textAlign: 'center',
-          fontSize: 13, color: '#7A3030', flexShrink: 0,
+          background: surface, border: `1px solid ${stroke}`, borderRadius: 12,
+          display: 'flex', flexDirection: 'column', height: 'min(72vh, 640px)',
         }}>
-          This match has been closed. You can no longer send messages.
+          {/* thread header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: `1px solid ${stroke}` }}>
+            <PhotoBox h={40} w={40} r={8} src={m.listing?.photos?.[0]} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: sans, fontSize: 14.5, fontWeight: 600, color: ink }}>
+                {m.profile?.name || 'Unknown'}
+                <span style={{ color: ink3, fontWeight: 400, fontSize: 12 }}> · {m.profile?.country || '—'}</span>
+              </div>
+              <div style={{ fontFamily: sans, fontSize: 11.5, color: ink3 }}>
+                {m.listing ? `${m.listing.model}` : 'Their watch'} ⇄ your {myListing?.model || 'watch'}
+              </div>
+            </div>
+            <button onClick={() => setReportOpen(true)} style={{
+              all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 12, color: red,
+            }}>⚑ Report</button>
+          </div>
+
+          {/* messages */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ textAlign: 'center', fontFamily: mono, fontSize: 9.5, letterSpacing: '.12em', color: ink3 }}>
+              — MATCHED · {timeAgo(m.createdAt).toUpperCase()} —
+            </div>
+            {messages.map(msg => {
+              if (msg.is_system) return (
+                <div key={msg.id} style={{ textAlign: 'center', padding: '4px 0' }}>
+                  <span style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: '.1em', color: ink3 }}>{msg.content}</span>
+                </div>
+              )
+              const isMine = msg.sender_id === user.id
+              return (
+                <div key={msg.id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+                  <div style={{
+                    maxWidth: '72%', padding: '10px 14px', borderRadius: 14,
+                    borderBottomRightRadius: isMine ? 4 : 14,
+                    borderBottomLeftRadius:  isMine ? 14 : 4,
+                    background: isMine ? goldSoft : surface2,
+                    border: `1px solid ${isMine ? gold + '40' : stroke}`,
+                  }}>
+                    <div style={{ fontFamily: sans, fontSize: 13.5, color: ink, lineHeight: 1.45 }}>{msg.content}</div>
+                    <div style={{ fontFamily: sans, fontSize: 9.5, color: ink3, textAlign: 'right', marginTop: 5 }}>
+                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+            {messages.length === 0 && (
+              <div style={{ textAlign: 'center', color: ink3, fontFamily: sans, fontSize: 13, marginTop: 20 }}>
+                No messages yet — break the ice.
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* composer */}
+          <div style={{ display: 'flex', gap: 10, padding: '12px 16px', borderTop: `1px solid ${stroke}`, alignItems: 'center' }}>
+            <input
+              value={text}
+              onChange={e => setText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+              placeholder="Message…"
+              style={{
+                flex: 1, height: 42, border: `1px solid ${stroke}`, borderRadius: 999,
+                padding: '0 18px', fontFamily: sans, fontSize: 13.5, color: ink,
+                background: bg, outline: 'none',
+              }}
+            />
+            <button onClick={handleSend} style={{
+              all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13.5, fontWeight: 600,
+              color: '#fff', background: gold, borderRadius: 999,
+              padding: '0 22px', height: 42, display: 'inline-flex', alignItems: 'center',
+            }}>Send</button>
+          </div>
         </div>
       )}
-
-      {/* Messages */}
-      <div style={{
-        flex: 1, overflowY: 'auto', padding: '24px 20px 12px',
-        display: 'flex', flexDirection: 'column', gap: 6,
-      }}>
-        {messages.length === 0 && (
-          <div style={{ textAlign: 'center', color: '#252535', fontSize: 13, marginTop: 48 }}>
-            No messages yet. Say hello.
-          </div>
-        )}
-        {messages.map(msg => (
-          <Bubble key={msg.id} msg={msg} isMine={msg.sender_id === user.id} />
-        ))}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input */}
-      <form
-        onSubmit={handleSend}
-        style={{
-          display: 'flex', gap: 10, padding: '12px 16px',
-          background: '#0E0E1C', borderTop: '1px solid #1A1A28', flexShrink: 0,
-        }}
-      >
-        <input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          placeholder={isClosed ? 'This match is closed.' : 'Type a message…'}
-          disabled={isClosed}
-          style={{
-            flex: 1, padding: '10px 14px', borderRadius: 10,
-            border: '1px solid #1E1E2C', fontSize: 14, outline: 'none',
-            background: isClosed ? '#0D0D1A' : '#111120',
-            color: isClosed ? '#2A2A3A' : '#F0EDE8',
-          }}
-        />
-        <button
-          type="submit"
-          disabled={!text.trim() || isClosed}
-          style={{
-            padding: '10px 20px', borderRadius: 10, border: 'none',
-            background: text.trim() && !isClosed ? '#C9A84C' : '#141424',
-            color: text.trim() && !isClosed ? '#0B0A07' : '#252535',
-            fontWeight: 700, fontSize: 13,
-            cursor: text.trim() && !isClosed ? 'pointer' : 'default',
-            transition: 'background 0.15s',
-            letterSpacing: '0.02em',
-          }}
-        >
-          Send
-        </button>
-      </form>
 
       <ReportModal
         isOpen={reportOpen}
@@ -280,42 +303,13 @@ export default function Chat() {
   )
 }
 
-function Bubble({ msg, isMine }) {
-  if (msg.is_system) {
-    return (
-      <div style={{ textAlign: 'center', padding: '8px 0' }}>
-        <span style={{
-          background: '#161624', borderRadius: 20,
-          padding: '4px 16px', fontSize: 12, color: '#353548',
-          border: '1px solid #1E1E2C', display: 'inline-block',
-        }}>
-          {msg.content}
-        </span>
-      </div>
-    )
-  }
-
-  return (
-    <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
-      <div style={{
-        maxWidth: '68%', padding: '9px 14px', borderRadius: 14,
-        borderBottomRightRadius: isMine ? 4 : 14,
-        borderBottomLeftRadius: isMine ? 14 : 4,
-        background: isMine ? '#C9A84C' : '#161628',
-        color: isMine ? '#0B0A07' : '#D0CCC6',
-        border: isMine ? 'none' : '1px solid #1E1E2C',
-        fontSize: 14, lineHeight: 1.45,
-      }}>
-        {msg.content}
-        <div style={{
-          fontSize: 10, marginTop: 4,
-          opacity: isMine ? 0.5 : 0.4,
-          textAlign: 'right',
-          color: isMine ? '#0B0A07' : '#D0CCC6',
-        }}>
-          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </div>
-      </div>
-    </div>
-  )
+function timeAgo(ts) {
+  if (!ts) return ''
+  const diff = Date.now() - new Date(ts).getTime()
+  const h = Math.floor(diff / 3600000)
+  if (h < 1)  return 'just now'
+  if (h < 24) return `${h}h ago`
+  const d = Math.floor(h / 24)
+  if (d === 1) return 'yesterday'
+  return `${d} days ago`
 }

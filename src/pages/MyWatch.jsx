@@ -2,217 +2,152 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
+import { PhotoBox, TierBadge, GEO_LABELS, TIERS } from '../components/primitives'
 
-const TIER_LABELS = {
-  entry: '3k–6k EUR',
-  mid: '6k–12k EUR',
-  high: '12k–25k EUR',
-  ultra: '25k–50k EUR',
-}
-
-const GEO_LABELS = {
-  local: 'Local (same country)',
-  europe: 'Europe',
-  global: 'Global',
-}
+const gold    = '#A9823F'
+const ink     = '#1C1B19'
+const ink2    = '#6E6A62'
+const ink3    = '#A6A199'
+const stroke  = '#E2DED6'
+const green   = '#3F9D6E'
+const red     = '#D24B4B'
+const sans    = "'Inter', system-ui, sans-serif"
+const serif   = "'Cormorant Garamond', serif"
+const mono    = "'Spline Sans Mono', ui-monospace, monospace"
 
 export default function MyWatch() {
-  const { user } = useAuth()
-  const navigate = useNavigate()
+  const { user }  = useAuth()
+  const navigate  = useNavigate()
   const [listing, setListing] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [deleting, setDeleting] = useState(false)
+  const [deleting,setDeleting]= useState(false)
 
   useEffect(() => {
-    supabase
-      .from('listings')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .maybeSingle()
-      .then(({ data }) => {
-        setListing(data)
-        setLoading(false)
-      })
+    supabase.from('listings').select('*')
+      .eq('user_id', user.id).eq('is_active', true).maybeSingle()
+      .then(({ data }) => { setListing(data); setLoading(false) })
   }, [user.id])
 
   async function handleDelete() {
     if (!window.confirm('Remove this listing? You can always add a new one.')) return
     setDeleting(true)
-    await supabase
-      .from('listings')
-      .update({ is_active: false })
-      .eq('id', listing.id)
-    setListing(null)
-    setDeleting(false)
+    await supabase.from('listings').update({ is_active: false }).eq('id', listing.id)
+    setListing(null); setDeleting(false)
   }
 
   if (loading) return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: 'calc(100vh - 60px)', color: '#353545', fontSize: 14,
-    }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: ink3, fontFamily: sans, fontSize: 14 }}>
       Loading…
     </div>
   )
 
-  if (!listing) {
-    return (
+  if (!listing) return (
+    <div style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 26px 40px' }}>
+      <h1 style={{ fontFamily: serif, fontWeight: 600, fontSize: 32, color: ink, margin: '0 0 8px' }}>My listing</h1>
       <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        height: 'calc(100vh - 60px)', gap: 14,
+        marginTop: 40, border: `1px dashed #D4CFC5`, borderRadius: 16,
+        padding: '60px 24px', textAlign: 'center',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
       }}>
-        <div style={{ fontSize: 40, opacity: 0.2 }}>⌚</div>
-        <p style={{ color: '#353548', fontSize: 14 }}>You don't have an active listing.</p>
-        <button
-          onClick={() => navigate('/create-listing')}
-          style={{
-            background: '#C9A84C', color: '#0B0A07',
-            border: 'none', borderRadius: 8,
-            padding: '10px 24px', fontSize: 13, fontWeight: 700,
-            cursor: 'pointer',
-          }}
-        >
-          List my watch
-        </button>
-      </div>
-    )
-  }
-
-  const photos = listing.photos || []
-
-  return (
-    <div style={{ background: '#0B0B14', minHeight: 'calc(100vh - 60px)' }}>
-      <div style={{ maxWidth: 640, margin: '0 auto', padding: '40px 24px' }}>
-
-        <div style={{ marginBottom: 28 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#F0EDE8' }}>My Watch</h1>
-          <p style={{ color: '#353548', fontSize: 13, marginTop: 4 }}>Your active listing</p>
-        </div>
-
-        <div style={{
-          background: '#111120',
-          border: '1px solid #1A1A28',
-          borderRadius: 20,
-          overflow: 'hidden',
-        }}>
-          {/* Photos */}
-          {photos.length > 0 && (
-            <div style={{
-              aspectRatio: '16/9',
-              background: '#0D0D1A',
-              overflow: 'hidden',
-              position: 'relative',
-            }}>
-              <img
-                src={photos[0]}
-                alt="Watch"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
-              {photos.length > 1 && (
-                <div style={{
-                  position: 'absolute', bottom: 12, right: 12,
-                  background: 'rgba(11,11,20,0.75)',
-                  borderRadius: 6, padding: '3px 10px',
-                  fontSize: 11, color: '#7A7A8C',
-                  backdropFilter: 'blur(4px)',
-                }}>
-                  +{photos.length - 1} more
-                </div>
-              )}
-            </div>
-          )}
-
-          {photos.length > 1 && (
-            <div style={{ display: 'flex', gap: 6, padding: '12px 16px 0', overflowX: 'auto' }}>
-              {photos.slice(1).map((url, i) => (
-                <img
-                  key={i}
-                  src={url}
-                  alt=""
-                  style={{
-                    width: 60, height: 60, objectFit: 'cover', borderRadius: 8,
-                    border: '1px solid #1E1E2C', flexShrink: 0,
-                  }}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Details */}
-          <div style={{ padding: '24px 24px 28px' }}>
-            <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: 22, fontWeight: 700, color: '#F0EDE8', marginBottom: 2 }}>
-                {listing.brand}
-              </h2>
-              <div style={{ fontSize: 15, color: '#525265' }}>
-                {listing.model}
-                {listing.reference && (
-                  <span style={{ color: '#2A2A3A' }}> · Ref. {listing.reference}</span>
-                )}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <DetailRow label="Value range" value={TIER_LABELS[listing.price_tier] || listing.price_tier} />
-              <DetailRow label="Geo scope" value={GEO_LABELS[listing.geo_scope] || listing.geo_scope} />
-              <DetailRow label="Open to top-up" value={listing.open_to_topup ? 'Yes' : 'No'} />
-              {listing.wanted_references?.length > 0 && (
-                <DetailRow
-                  label="Wanted references"
-                  value={listing.wanted_references.join(', ')}
-                />
-              )}
-            </div>
-
-            <div style={{
-              marginTop: 28, paddingTop: 20,
-              borderTop: '1px solid #161624',
-              display: 'flex', gap: 10,
-            }}>
-              <button
-                onClick={() => navigate('/create-listing')}
-                style={{
-                  flex: 1,
-                  background: 'transparent', color: '#525265',
-                  border: '1px solid #1E1E2C', borderRadius: 8,
-                  padding: '10px 0', fontSize: 13, fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                Replace listing
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                style={{
-                  flex: 1,
-                  background: 'transparent', color: '#5A2525',
-                  border: '1px solid #2A1A1A', borderRadius: 8,
-                  padding: '10px 0', fontSize: 13, fontWeight: 600,
-                  cursor: deleting ? 'not-allowed' : 'pointer',
-                  opacity: deleting ? 0.5 : 1,
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.06)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-              >
-                {deleting ? 'Removing…' : 'Remove listing'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <span style={{ fontSize: 40, color: ink3 }}>⌚</span>
+        <span style={{ fontFamily: serif, fontSize: 24, color: ink }}>No active listing</span>
+        <span style={{ fontFamily: sans, fontSize: 13.5, color: ink3, lineHeight: 1.5 }}>
+          List your watch to start swapping.
+        </span>
+        <button onClick={() => navigate('/create-listing')} style={{
+          all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 14, fontWeight: 600,
+          color: '#fff', background: gold, borderRadius: 8, padding: '12px 28px', marginTop: 8,
+        }}>List my watch</button>
       </div>
     </div>
   )
-}
 
-function DetailRow({ label, value }) {
+  const photos = listing.photos || []
+  const tier   = TIERS[listing.price_tier] || {}
+  const geo    = GEO_LABELS[listing.geo_scope] || listing.geo_scope || '—'
+
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16 }}>
-      <span style={{ fontSize: 12, color: '#2A2A3A', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, flexShrink: 0 }}>
-        {label}
-      </span>
-      <span style={{ fontSize: 13, color: '#7A7A8C', textAlign: 'right' }}>{value}</span>
+    <div style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 26px 40px' }}>
+      {/* page head */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+        <h1 style={{ margin: 0, fontFamily: serif, fontWeight: 600, fontSize: 32, color: ink, lineHeight: 1 }}>
+          My listing
+        </h1>
+        {listing.is_active && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8, fontFamily: sans, fontSize: 13,
+            color: green, border: `1px solid ${green}44`, background: `${green}10`,
+            borderRadius: 999, padding: '7px 14px',
+          }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: green }} />Active
+          </span>
+        )}
+      </div>
+
+      <div className="mywatch-grid" style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 30, marginTop: 24 }}>
+        {/* Left: photos */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <PhotoBox h={320} big src={photos[0]} label="watch photo · main" />
+          <div style={{ display: 'flex', gap: 10 }}>
+            {[1, 2, 3].map(i => (
+              <PhotoBox key={i} h={74} r={8} src={photos[i]} style={{ flex: 1 }} />
+            ))}
+          </div>
+        </div>
+
+        {/* Right: details */}
+        <div>
+          <div style={{ fontFamily: mono, fontSize: 11, letterSpacing: '.1em', color: ink3, textTransform: 'uppercase' }}>
+            {listing.brand} · {tier.fullLabel || tier.label || ''}
+          </div>
+          <div style={{ fontFamily: serif, fontSize: 30, fontWeight: 600, color: ink, margin: '6px 0 18px' }}>
+            {listing.model}
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px 26px', maxWidth: 460 }}>
+            {[
+              ['Reference',       listing.reference || '—'],
+              ['Price tier',      tier.range || '—'],
+              ['Geographic scope',geo],
+              ['Open to top-up',  listing.open_to_topup ? 'Yes ⇅' : 'Straight swap'],
+            ].map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <span style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: '.07em', color: ink3, textTransform: 'uppercase' }}>{k}</span>
+                <span style={{ fontFamily: sans, fontSize: 15, color: ink, fontWeight: 500 }}>{v}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ height: 1, background: stroke, margin: '22px 0' }} />
+
+          <span style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: '.07em', color: ink3, textTransform: 'uppercase' }}>
+            Wanted in return
+          </span>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+            {(listing.wanted_references || []).map(t => (
+              <span key={t} style={{
+                fontFamily: sans, fontSize: 12.5, color: ink2,
+                border: `1px solid ${stroke}`, borderRadius: 999, padding: '6px 12px',
+              }}>{t}</span>
+            ))}
+            {(!listing.wanted_references?.length) && (
+              <span style={{ fontFamily: sans, fontSize: 12.5, color: ink3 }}>None specified</span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
+            <button onClick={() => navigate('/create-listing')} style={{
+              all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13.5,
+              color: gold, border: `1px solid ${gold}`, borderRadius: 8, padding: '11px 20px',
+            }}>Edit listing</button>
+            <button onClick={handleDelete} disabled={deleting} style={{
+              all: 'unset', cursor: deleting ? 'default' : 'pointer', fontFamily: sans, fontSize: 13.5,
+              color: red, border: `1px solid ${red}55`, borderRadius: 8, padding: '11px 20px',
+              opacity: deleting ? 0.5 : 1,
+            }}>{deleting ? 'Removing…' : 'Delete'}</button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
