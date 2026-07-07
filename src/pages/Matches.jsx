@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
+import { unwrap } from '../lib/db'
 import { PhotoBox, Flag } from '../components/primitives'
 
 const gold    = '#A9823F'
@@ -43,12 +44,14 @@ export default function Matches() {
   useEffect(() => { fetchMatches() }, [user.id])
 
   async function fetchMatches() {
-    const [{ data: rawMatches }, { data: mine }] = await Promise.all([
+    const [matchesResult, myListingResult] = await Promise.all([
       supabase.from('matches').select('*')
         .or(`user_a.eq.${user.id},user_b.eq.${user.id}`).eq('status', 'active'),
       supabase.from('listings').select('id, brand, model, photos')
         .eq('user_id', user.id).eq('is_active', true).single(),
     ])
+    const rawMatches = unwrap(matchesResult, 'Matches: fetch matches')
+    const mine       = unwrap(myListingResult, 'Matches: fetch my listing')
     setMyListing(mine)
 
     if (!rawMatches || rawMatches.length === 0) { setMatches([]); setLoading(false); return }
@@ -56,19 +59,23 @@ export default function Matches() {
     const otherUserIds    = rawMatches.map(m => m.user_a === user.id ? m.user_b    : m.user_a)
     const otherListingIds = rawMatches.map(m => m.user_a === user.id ? m.listing_b : m.listing_a)
 
-    const [{ data: profiles }, { data: listings }] = await Promise.all([
+    const [profilesResult, listingsResult] = await Promise.all([
       supabase.from('profiles').select('id, name, country').in('id', otherUserIds),
       supabase.from('listings').select('id, brand, model, photos').in('id', otherListingIds),
     ])
+    const profiles = unwrap(profilesResult, 'Matches: fetch matched profiles')
+    const listings = unwrap(listingsResult, 'Matches: fetch matched listings')
 
     const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]))
     const listingMap = Object.fromEntries((listings || []).map(l => [l.id, l]))
 
     // Fetch last message per match to detect unseen
     const matchIds = rawMatches.map(m => m.id)
-    const { data: lastMsgs } = await supabase
-      .from('messages').select('match_id, sender_id, created_at')
-      .in('match_id', matchIds).order('created_at', { ascending: false })
+    const lastMsgs = unwrap(
+      await supabase.from('messages').select('match_id, sender_id, created_at')
+        .in('match_id', matchIds).order('created_at', { ascending: false }),
+      'Matches: fetch last messages'
+    )
 
     const lastMsgMap = {}
     for (const msg of lastMsgs || []) {

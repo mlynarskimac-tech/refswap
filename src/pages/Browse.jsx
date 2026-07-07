@@ -4,6 +4,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
 import { useBadges } from '../context/badge-context'
 import { useToast } from '../context/toast-context'
+import { unwrap } from '../lib/db'
 import { PhotoBox, TierBadge, Flag, AnonToken, TIERS, GEO_LABELS } from '../components/primitives'
 
 const gold    = '#A9823F'
@@ -262,17 +263,23 @@ export default function Browse() {
   async function fetchData() {
     setLoading(true)
     if (user) {
-      const { data: mine } = await supabase
-        .from('listings').select('id').eq('user_id', user.id).eq('is_active', true).single()
+      const mine = unwrap(
+        await supabase.from('listings').select('id').eq('user_id', user.id).eq('is_active', true).single(),
+        'Browse: fetch my listing'
+      )
       setMyListing(mine)
 
-      const { data: myLikes } = await supabase
-        .from('likes').select('to_listing').eq('from_user', user.id)
+      const myLikes = unwrap(
+        await supabase.from('likes').select('to_listing').eq('from_user', user.id),
+        'Browse: fetch my likes'
+      )
       const likedSet = new Set((myLikes || []).map(l => l.to_listing))
 
-      const { data: myMatches } = await supabase
-        .from('matches').select('user_a, listing_a, listing_b, status')
-        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+      const myMatches = unwrap(
+        await supabase.from('matches').select('user_a, listing_a, listing_b, status')
+          .or(`user_a.eq.${user.id},user_b.eq.${user.id}`),
+        'Browse: fetch my matches'
+      )
       const matchedSet = new Set()
       for (const m of myMatches || []) {
         const theirListing = m.user_a === user.id ? m.listing_b : m.listing_a
@@ -285,13 +292,24 @@ export default function Browse() {
 
     let query = supabase
       .from('listings')
-      .select('id, brand, model, reference, price_tier, geo_scope, open_to_topup, photos, wanted_references, user_id, profiles!listings_user_id_fkey(country)')
+      .select('id, brand, model, reference, price_tier, geo_scope, open_to_topup, photos, wanted_references, user_id')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
 
     if (user) query = query.neq('user_id', user.id)
-    const { data: all } = await query
-    setListings(all || [])
+    const all = unwrap(await query, 'Browse: fetch listings') || []
+
+    const userIds = [...new Set(all.map(l => l.user_id))]
+    let countryMap = {}
+    if (userIds.length > 0) {
+      const publicProfiles = unwrap(
+        await supabase.from('public_profiles').select('id, country').in('id', userIds),
+        'Browse: fetch public profiles'
+      )
+      countryMap = Object.fromEntries((publicProfiles || []).map(p => [p.id, p.country]))
+    }
+
+    setListings(all.map(l => ({ ...l, profiles: { country: countryMap[l.user_id] || null } })))
     setLoading(false)
   }
 
@@ -305,39 +323,52 @@ export default function Browse() {
     if (matchedIds.has(listingId)) return
 
     if (likedIds.has(listingId)) {
-      await supabase.from('likes').delete().eq('from_user', user.id).eq('to_listing', listingId)
+      const { error } = await supabase.from('likes').delete().eq('from_user', user.id).eq('to_listing', listingId)
+      if (error) {
+        console.error('[Browse: remove like]', error)
+        flash("Couldn't remove like — try again.")
+        return
+      }
       setLikedIds(prev => { const n = new Set(prev); n.delete(listingId); return n })
       if (drawer?.id === listingId) setDrawer(prev => ({ ...prev }))
       return
     }
 
-    await supabase.from('likes').upsert(
+    const theirListing = listings.find(l => l.id === listingId)
+
+    const { error: likeErr } = await supabase.from('likes').upsert(
       { from_user: user.id, to_listing: listingId },
       { onConflict: 'from_user,to_listing', ignoreDuplicates: true }
     )
-
-    const theirListing = listings.find(l => l.id === listingId)
-    if (theirListing) {
-      const { data: theirLike } = await supabase
-        .from('likes').select('from_user')
-        .eq('from_user', theirListing.user_id).eq('to_listing', myListing.id).maybeSingle()
-
-      if (theirLike) {
-        const { error: matchErr } = await supabase.from('matches').insert({
-          listing_a: myListing.id, listing_b: listingId,
-          user_a: user.id,         user_b: theirListing.user_id,
-        })
-        if (!matchErr) {
-          setMatchedIds(prev => new Set([...prev, listingId]))
-          flash("It's a match! Go to your matches to start chatting.")
-          refreshBadges()
-        }
-      } else {
-        flash("Liked — we'll tell you if it's mutual.")
-      }
+    if (likeErr) {
+      console.error('[Browse: add like]', likeErr)
+      flash("Couldn't like this watch — try again.")
+      return
     }
 
     setLikedIds(prev => new Set([...prev, listingId]))
+
+    if (theirListing) {
+      // give the DB trigger a moment to create the match row
+      await new Promise(resolve => setTimeout(resolve, 700))
+
+      const theirUserId = theirListing.user_id
+      const match = unwrap(
+        await supabase.from('matches').select('id')
+          .eq('status', 'active')
+          .or(`and(user_a.eq.${user.id},user_b.eq.${theirUserId}),and(user_a.eq.${theirUserId},user_b.eq.${user.id})`)
+          .maybeSingle(),
+        'Browse: check for match'
+      )
+
+      if (match) {
+        setMatchedIds(prev => new Set([...prev, listingId]))
+        flash("It's a match! Go to your matches to start chatting.")
+        refreshBadges()
+      } else {
+        flash("Liked — we'll let you know if it's mutual.")
+      }
+    }
   }
 
   const list = listings.filter(l =>

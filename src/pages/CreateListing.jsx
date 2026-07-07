@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
 import { useToast } from '../context/toast-context'
+import { unwrap } from '../lib/db'
 import { PhotoBox, TIERS } from '../components/primitives'
 
 const gold    = '#A9823F'
@@ -220,7 +221,7 @@ export default function CreateListing() {
         photoUrls.push(urlData.publicUrl)
       }
 
-      const { error: dbErr } = await supabase.from('listings').insert({
+      const insertResult = await supabase.from('listings').insert({
         user_id: user.id,
         brand: data.brand, model: data.model, reference: data.ref,
         price_tier: data.tier, geo_scope: data.scope,
@@ -228,12 +229,15 @@ export default function CreateListing() {
         wanted_references: data.wants,
         photos: photoUrls, is_active: true,
       })
-      if (dbErr) throw dbErr
+      unwrap(insertResult, 'CreateListing: publish listing')
+      if (insertResult.error) throw insertResult.error
 
       flash('Listing published ✓')
       navigate('/my-watch')
     } catch (err) {
+      console.error('[CreateListing: publish]', err)
       setError(err.message)
+      flash("Couldn't publish listing — try again.")
     } finally {
       setPublishing(false)
     }

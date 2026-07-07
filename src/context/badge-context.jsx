@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from './auth-context'
+import { unwrap } from '../lib/db'
 
 const BadgeCtx = createContext({ newMatches: 0, unread: 0, firstUnreadMatchId: null, refresh: () => {} })
 
@@ -15,11 +16,14 @@ export function BadgeProvider({ children }) {
       setNewMatches(0); setUnread(0); setFirstUnreadMatchId(null)
       return
     }
-    const { data: matches } = await supabase
-      .from('matches')
-      .select('id')
-      .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
-      .eq('status', 'active')
+    const matches = unwrap(
+      await supabase
+        .from('matches')
+        .select('id')
+        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+        .eq('status', 'active'),
+      'Badges: fetch matches'
+    )
 
     if (!matches || matches.length === 0) {
       setNewMatches(0); setUnread(0); setFirstUnreadMatchId(null)
@@ -29,12 +33,15 @@ export function BadgeProvider({ children }) {
     setNewMatches(matches.length)
 
     const matchIds = matches.map(m => m.id)
-    const { data: msgs } = await supabase
-      .from('messages')
-      .select('match_id, sender_id')
-      .in('match_id', matchIds)
-      .neq('sender_id', user.id)
-      .eq('is_system', false)
+    const msgs = unwrap(
+      await supabase
+        .from('messages')
+        .select('match_id, sender_id')
+        .in('match_id', matchIds)
+        .neq('sender_id', user.id)
+        .eq('is_system', false),
+      'Badges: fetch unread messages'
+    )
 
     const unreadMsgs = msgs || []
     setUnread(unreadMsgs.length)

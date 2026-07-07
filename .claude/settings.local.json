@@ -9,7 +9,15 @@
       "Bash(git commit *)",
       "Bash(git remote *)",
       "Bash(git push *)",
-      "Bash(git config *)"
+      "Bash(git config *)",
+      "Bash(npm run *)",
+      "Bash(cd /d E:\\\\refswap)",
+      "Bash(npx vite *)",
+      "Bash(git -C E:/refswap status)",
+      "Bash(git -C E:/refswap log --oneline -3)",
+      "Bash(git -C E:/refswap add src/)",
+      "Bash(git -C E:/refswap status --short)",
+      "Bash(git *)"
     ]
   }
 }

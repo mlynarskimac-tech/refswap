@@ -24,9 +24,9 @@ export default function ReportModal({ isOpen, onClose, onSubmit }) {
 
   async function handleSubmit() {
     setLoading(true)
-    await onSubmit(reason)
+    const ok = await onSubmit(reason)
     setLoading(false)
-    setSubmitted(true)
+    if (ok) setSubmitted(true)
   }
 
   function handleClose() {

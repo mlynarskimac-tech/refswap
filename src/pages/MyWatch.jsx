@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
+import { useToast } from '../context/toast-context'
+import { unwrap } from '../lib/db'
 import { PhotoBox, TierBadge, GEO_LABELS, TIERS } from '../components/primitives'
 
 const gold    = '#A9823F'
@@ -18,6 +20,7 @@ const mono    = "'Spline Sans Mono', ui-monospace, monospace"
 export default function MyWatch() {
   const { user }  = useAuth()
   const navigate  = useNavigate()
+  const { flash } = useToast()
   const [listing, setListing] = useState(null)
   const [loading, setLoading] = useState(true)
   const [deleting,setDeleting]= useState(false)
@@ -25,13 +28,19 @@ export default function MyWatch() {
   useEffect(() => {
     supabase.from('listings').select('*')
       .eq('user_id', user.id).eq('is_active', true).maybeSingle()
-      .then(({ data }) => { setListing(data); setLoading(false) })
+      .then(result => { setListing(unwrap(result, 'MyWatch: fetch my listing')); setLoading(false) })
   }, [user.id])
 
   async function handleDelete() {
     if (!window.confirm('Remove this listing? You can always add a new one.')) return
     setDeleting(true)
-    await supabase.from('listings').update({ is_active: false }).eq('id', listing.id)
+    const { error } = await supabase.from('listings').update({ is_active: false }).eq('id', listing.id)
+    if (error) {
+      console.error('[MyWatch: delete listing]', error)
+      flash("Couldn't remove listing — try again.")
+      setDeleting(false)
+      return
+    }
     setListing(null); setDeleting(false)
   }
 

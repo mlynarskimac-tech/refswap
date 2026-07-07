@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
+import { useToast } from '../context/toast-context'
+import { unwrap } from '../lib/db'
 import { PhotoBox } from '../components/primitives'
 import ReportModal from '../components/ReportModal'
 
@@ -40,6 +42,7 @@ export default function Chat() {
   const { matchId } = useParams()
   const { user }    = useAuth()
   const navigate    = useNavigate()
+  const { flash }   = useToast()
 
   const [matches,     setMatches]     = useState([])
   const [activeMatch, setActiveMatch] = useState(null)
@@ -77,13 +80,15 @@ export default function Chat() {
   }, [messages])
 
   async function loadAll() {
-    const [{ data: rawMatches }, { data: mine }] = await Promise.all([
+    const [matchesResult, myListingResult] = await Promise.all([
       supabase.from('matches').select('*')
         .or(`user_a.eq.${user.id},user_b.eq.${user.id}`).eq('status', 'active')
         .order('created_at', { ascending: false }),
       supabase.from('listings').select('id, brand, model, photos')
         .eq('user_id', user.id).eq('is_active', true).maybeSingle(),
     ])
+    const rawMatches = unwrap(matchesResult, 'Chat: fetch matches')
+    const mine       = unwrap(myListingResult, 'Chat: fetch my listing')
     setMyListing(mine)
 
     if (!rawMatches || rawMatches.length === 0) { setLoading(false); return }
@@ -91,10 +96,12 @@ export default function Chat() {
     const otherUserIds    = rawMatches.map(m => m.user_a === user.id ? m.user_b    : m.user_a)
     const otherListingIds = rawMatches.map(m => m.user_a === user.id ? m.listing_b : m.listing_a)
 
-    const [{ data: profiles }, { data: listings }] = await Promise.all([
+    const [profilesResult, listingsResult] = await Promise.all([
       supabase.from('profiles').select('id, name, country').in('id', otherUserIds),
       supabase.from('listings').select('id, brand, model, photos').in('id', otherListingIds),
     ])
+    const profiles = unwrap(profilesResult, 'Chat: fetch matched profiles')
+    const listings = unwrap(listingsResult, 'Chat: fetch matched listings')
 
     const profileMap = Object.fromEntries((profiles || []).map(p => [p.id, p]))
     const listingMap = Object.fromEntries((listings || []).map(l => [l.id, l]))
@@ -125,9 +132,11 @@ export default function Chat() {
   }
 
   async function fetchMessages(mid) {
-    const { data: msgs } = await supabase
-      .from('messages').select('*').eq('match_id', mid)
-      .order('created_at', { ascending: true })
+    const msgs = unwrap(
+      await supabase.from('messages').select('*').eq('match_id', mid)
+        .order('created_at', { ascending: true }),
+      'Chat: fetch messages'
+    )
     setMessages(msgs || [])
     localStorage.setItem(`lastReadMessage_${mid}`, new Date().toISOString())
   }
@@ -146,18 +155,30 @@ export default function Chat() {
     const { error } = await supabase.from('messages').insert({
       match_id: activeMatch.matchId, sender_id: user.id, content,
     })
-    if (!error) await fetchMessages(activeMatch.matchId)
-    else setText(content)
+    if (!error) {
+      await fetchMessages(activeMatch.matchId)
+    } else {
+      console.error('[Chat: send message]', error)
+      flash("Message couldn't be sent — try again.")
+      setText(content)
+    }
   }
 
   async function handleSubmitReport(reason) {
-    if (!activeMatch) return
-    await supabase.from('reports').insert({
+    if (!activeMatch) return false
+    const { error } = await supabase.from('reports').insert({
       reporter_id: user.id,
       reported_user_id: activeMatch.userId,
       reported_listing_id: activeMatch.listingId,
       reason,
     })
+    if (error) {
+      console.error('[Chat: submit report]', error)
+      flash("Couldn't submit report — try again.")
+      return false
+    }
+    flash("Thanks, we'll review within 48h.")
+    return true
   }
 
   if (loading) return (
