@@ -26,6 +26,52 @@ const GEO_OPTIONS = [
   { label: 'Worldwide',  value: 'global' },
 ]
 
+// ── Image sanitization ───────────────────────────────────────────────────────
+const MAX_IMAGE_DIMENSION = 1600
+
+function loadImageElement(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img) }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read image file.')) }
+    img.src = url
+  })
+}
+
+// Re-encodes the image through <canvas>, which drops all EXIF/GPS metadata
+// and downscales oversized photos so uploads can't leak the owner's location.
+async function sanitizeImage(file) {
+  const img = await loadImageElement(file)
+  let { naturalWidth: width, naturalHeight: height } = img
+
+  if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+    if (width >= height) {
+      height = Math.round(height * (MAX_IMAGE_DIMENSION / width))
+      width = MAX_IMAGE_DIMENSION
+    } else {
+      width = Math.round(width * (MAX_IMAGE_DIMENSION / height))
+      height = MAX_IMAGE_DIMENSION
+    }
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85))
+  if (!blob) throw new Error('Could not process image.')
+  return blob
+}
+
+function randomFileName(ext) {
+  const rand = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return `${rand}.${ext}`
+}
+
 // ── Sub-controls ────────────────────────────────────────────────────────────
 function Field({ label, children }) {
   return (
@@ -213,9 +259,11 @@ export default function CreateListing() {
       const photoUrls = []
       for (const file of photos) {
         if (typeof file === 'string') { photoUrls.push(file); continue }
-        const ext  = file.name.split('.').pop()
-        const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-        const { error: upErr } = await supabase.storage.from('watch-images').upload(path, file)
+        const blob = await sanitizeImage(file)
+        const path = randomFileName('jpg')
+        const { error: upErr } = await supabase.storage.from('watch-images').upload(path, blob, {
+          contentType: 'image/jpeg',
+        })
         if (upErr) throw upErr
         const { data: urlData } = supabase.storage.from('watch-images').getPublicUrl(path)
         photoUrls.push(urlData.publicUrl)
