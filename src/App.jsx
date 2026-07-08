@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/auth-context'
 import { BadgeProvider } from './context/badge-context'
@@ -17,21 +17,30 @@ import Toast from './components/Toast'
 
 const AUTH_ROUTES = ['/login', '/register']
 
+function isProfileComplete(profile) {
+  return !!profile && !!profile.name?.trim() && !!profile.country?.trim()
+}
+
 function AppRoutes() {
   const { user, loading } = useAuth()
   const location = useLocation()
   const [profile, setProfile] = useState(null)
   const [profileLoading, setProfileLoading] = useState(true)
 
-  useEffect(() => {
-    if (!user) { setProfile(null); setProfileLoading(false); return }
-    supabase
+  const fetchProfile = useCallback(() => {
+    if (!user) { setProfile(null); setProfileLoading(false); return Promise.resolve() }
+    return supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single()
       .then(({ data }) => { setProfile(data); setProfileLoading(false) })
   }, [user])
+
+  useEffect(() => {
+    setProfileLoading(true)
+    fetchProfile()
+  }, [fetchProfile])
 
   if (loading || profileLoading) return (
     <div style={{
@@ -42,6 +51,17 @@ function AppRoutes() {
       Loading…
     </div>
   )
+
+  const profileComplete = isProfileComplete(profile)
+
+  if (user && !profileComplete && !AUTH_ROUTES.includes(location.pathname)) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+        <CompleteProfile onComplete={fetchProfile} />
+        <Toast />
+      </div>
+    )
+  }
 
   const showChrome = user && !AUTH_ROUTES.includes(location.pathname)
 
@@ -56,14 +76,7 @@ function AppRoutes() {
         <Route path="/chat/:matchId"  element={user ? <Chat />          : <Navigate to="/login" />} />
         <Route path="/chat"           element={user ? <Chat />          : <Navigate to="/login" />} />
         <Route path="/login"          element={!user ? <Login /> : <Navigate to="/browse" />} />
-        <Route
-          path="/"
-          element={
-            !user ? <Navigate to="/login" /> :
-            !profile ? <CompleteProfile onComplete={() => window.location.reload()} /> :
-            <Navigate to="/browse" />
-          }
-        />
+        <Route path="/" element={!user ? <Navigate to="/login" /> : <Navigate to="/browse" />} />
         <Route path="*" element={<Navigate to="/browse" />} />
       </Routes>
       {showChrome && <TabBar />}

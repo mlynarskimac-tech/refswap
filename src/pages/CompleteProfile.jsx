@@ -24,17 +24,25 @@ export default function CompleteProfile({ onComplete }) {
 
   async function handleSubmit(e) {
     e.preventDefault()
+
+    const trimmedName = name.trim()
+    const trimmedCountry = country.trim()
+
+    if (!trimmedName || !trimmedCountry) {
+      setError('Please enter your name and select a country.')
+      return
+    }
+
     setLoading(true)
     setError('')
 
     const { error } = await supabase
       .from('profiles')
-      .insert({
-        id: user.id,
-        email: user.email,
-        name,
-        country,
+      .update({
+        name: trimmedName,
+        country: trimmedCountry,
       })
+      .eq('id', user.id)
 
     if (error) {
       setError(error.message)
