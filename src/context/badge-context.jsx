@@ -41,7 +41,7 @@ export function BadgeProvider({ children }) {
     const lastSeenMatchesAt = profile?.last_seen_matches_at || null
 
     const newMatchCount = lastSeenMatchesAt
-      ? matches.filter(m => m.created_at > lastSeenMatchesAt).length
+      ? matches.filter(m => new Date(m.created_at).getTime() > new Date(lastSeenMatchesAt).getTime()).length
       : matches.length
     setNewMatches(newMatchCount)
 
@@ -67,7 +67,7 @@ export function BadgeProvider({ children }) {
 
     const unreadMsgs = (msgs || []).filter(msg => {
       const lastReadAt = lastReadMap[msg.match_id]
-      return lastReadAt ? msg.created_at > lastReadAt : true
+      return lastReadAt ? new Date(msg.created_at).getTime() > new Date(lastReadAt).getTime() : true
     })
     setUnread(unreadMsgs.length)
     setFirstUnreadMatchId(unreadMsgs.length > 0 ? unreadMsgs[0].match_id : (matches[0]?.id ?? null))

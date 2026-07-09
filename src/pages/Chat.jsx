@@ -54,7 +54,7 @@ export default function Chat() {
   const [loading,     setLoading]     = useState(true)
   const [reportOpen,  setReportOpen]  = useState(false)
   const bottomRef = useRef(null)
-  const lastMarkedReadRef = useRef(null)
+  const lastMarkedMsgIdRef = useRef(null)
 
   // Load all matches + my listing once
   useEffect(() => {
@@ -78,11 +78,23 @@ export default function Chat() {
     const id = setInterval(async () => {
       const msgs = await fetchMessages(activeMatch.matchId)
       const latestOther = msgs.filter(msg => msg.sender_id !== user.id).slice(-1)[0]
-      if (latestOther && (!lastMarkedReadRef.current || latestOther.created_at > lastMarkedReadRef.current)) {
-        markAsRead(activeMatch.matchId)
+      if (latestOther && latestOther.id !== lastMarkedMsgIdRef.current) {
+        await markAsRead(activeMatch.matchId)
+        lastMarkedMsgIdRef.current = latestOther.id
       }
     }, 3000)
     return () => clearInterval(id)
+  }, [activeMatch?.matchId])
+
+  // Re-mark as read when the tab becomes visible again
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible' && activeMatch) {
+        markAsRead(activeMatch.matchId)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [activeMatch?.matchId])
 
   useEffect(() => {
@@ -152,15 +164,12 @@ export default function Chat() {
   }
 
   async function markAsRead(matchId) {
-    const now = new Date().toISOString()
-    const { error } = await supabase.from('match_reads').upsert({
-      match_id: matchId, user_id: user.id, last_read_at: now,
-    })
+    if (document.visibilityState !== 'visible') return
+    const { error } = await supabase.rpc('mark_match_read', { p_match_id: matchId })
     if (error) {
       console.error('[Chat: mark as read]', error)
       return
     }
-    lastMarkedReadRef.current = now
     refreshBadges()
   }
 

@@ -47,10 +47,7 @@ export default function Matches() {
 
   useEffect(() => {
     async function markMatchesSeen() {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ last_seen_matches_at: new Date().toISOString() })
-        .eq('id', user.id)
+      const { error } = await supabase.rpc('touch_matches_seen')
       if (error) {
         console.error('[Matches: mark seen]', error)
         return
