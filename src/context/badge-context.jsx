@@ -19,7 +19,7 @@ export function BadgeProvider({ children }) {
     const matches = unwrap(
       await supabase
         .from('matches')
-        .select('id')
+        .select('id, created_at')
         .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
         .eq('status', 'active'),
       'Badges: fetch matches'
@@ -30,20 +30,45 @@ export function BadgeProvider({ children }) {
       return
     }
 
-    setNewMatches(matches.length)
+    const profile = unwrap(
+      await supabase
+        .from('profiles')
+        .select('last_seen_matches_at')
+        .eq('id', user.id)
+        .maybeSingle(),
+      'Badges: fetch last seen matches'
+    )
+    const lastSeenMatchesAt = profile?.last_seen_matches_at || null
+
+    const newMatchCount = lastSeenMatchesAt
+      ? matches.filter(m => m.created_at > lastSeenMatchesAt).length
+      : matches.length
+    setNewMatches(newMatchCount)
+
+    const reads = unwrap(
+      await supabase
+        .from('match_reads')
+        .select('match_id, last_read_at')
+        .eq('user_id', user.id),
+      'Badges: fetch match reads'
+    )
+    const lastReadMap = Object.fromEntries((reads || []).map(r => [r.match_id, r.last_read_at]))
 
     const matchIds = matches.map(m => m.id)
     const msgs = unwrap(
       await supabase
         .from('messages')
-        .select('match_id, sender_id')
+        .select('match_id, sender_id, created_at')
         .in('match_id', matchIds)
         .neq('sender_id', user.id)
         .eq('is_system', false),
       'Badges: fetch unread messages'
     )
 
-    const unreadMsgs = msgs || []
+    const unreadMsgs = (msgs || []).filter(msg => {
+      const lastReadAt = lastReadMap[msg.match_id]
+      return lastReadAt ? msg.created_at > lastReadAt : true
+    })
     setUnread(unreadMsgs.length)
     setFirstUnreadMatchId(unreadMsgs.length > 0 ? unreadMsgs[0].match_id : (matches[0]?.id ?? null))
   }, [user])

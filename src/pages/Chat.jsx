@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
 import { useToast } from '../context/toast-context'
+import { useBadges } from '../context/badge-context'
 import { unwrap } from '../lib/db'
 import { PhotoBox } from '../components/primitives'
 import ReportModal from '../components/ReportModal'
@@ -43,6 +44,7 @@ export default function Chat() {
   const { user }    = useAuth()
   const navigate    = useNavigate()
   const { flash }   = useToast()
+  const { refresh: refreshBadges } = useBadges()
 
   const [matches,     setMatches]     = useState([])
   const [activeMatch, setActiveMatch] = useState(null)
@@ -52,6 +54,7 @@ export default function Chat() {
   const [loading,     setLoading]     = useState(true)
   const [reportOpen,  setReportOpen]  = useState(false)
   const bottomRef = useRef(null)
+  const lastMarkedReadRef = useRef(null)
 
   // Load all matches + my listing once
   useEffect(() => {
@@ -71,7 +74,14 @@ export default function Chat() {
   useEffect(() => {
     if (!activeMatch) return
     fetchMessages(activeMatch.matchId)
-    const id = setInterval(() => fetchMessages(activeMatch.matchId), 3000)
+    markAsRead(activeMatch.matchId)
+    const id = setInterval(async () => {
+      const msgs = await fetchMessages(activeMatch.matchId)
+      const latestOther = msgs.filter(msg => msg.sender_id !== user.id).slice(-1)[0]
+      if (latestOther && (!lastMarkedReadRef.current || latestOther.created_at > lastMarkedReadRef.current)) {
+        markAsRead(activeMatch.matchId)
+      }
+    }, 3000)
     return () => clearInterval(id)
   }, [activeMatch?.matchId])
 
@@ -138,7 +148,20 @@ export default function Chat() {
       'Chat: fetch messages'
     )
     setMessages(msgs || [])
-    localStorage.setItem(`lastReadMessage_${mid}`, new Date().toISOString())
+    return msgs || []
+  }
+
+  async function markAsRead(matchId) {
+    const now = new Date().toISOString()
+    const { error } = await supabase.from('match_reads').upsert({
+      match_id: matchId, user_id: user.id, last_read_at: now,
+    })
+    if (error) {
+      console.error('[Chat: mark as read]', error)
+      return
+    }
+    lastMarkedReadRef.current = now
+    refreshBadges()
   }
 
   function selectMatch(m) {

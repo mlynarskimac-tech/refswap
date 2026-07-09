@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
+import { useBadges } from '../context/badge-context'
 import { unwrap } from '../lib/db'
 import { PhotoBox, Flag } from '../components/primitives'
 
@@ -37,11 +38,27 @@ function MatchesEmpty() {
 export default function Matches() {
   const { user }  = useAuth()
   const navigate  = useNavigate()
+  const { refresh: refreshBadges } = useBadges()
   const [matches, setMatches] = useState([])
   const [myListing, setMyListing] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { fetchMatches() }, [user.id])
+
+  useEffect(() => {
+    async function markMatchesSeen() {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ last_seen_matches_at: new Date().toISOString() })
+        .eq('id', user.id)
+      if (error) {
+        console.error('[Matches: mark seen]', error)
+        return
+      }
+      refreshBadges()
+    }
+    markMatchesSeen()
+  }, [user.id])
 
   async function fetchMatches() {
     const [matchesResult, myListingResult] = await Promise.all([
