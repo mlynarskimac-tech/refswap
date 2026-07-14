@@ -291,25 +291,14 @@ export default function Browse() {
     }
 
     let query = supabase
-      .from('listings')
-      .select('id, brand, model, reference, price_tier, geo_scope, open_to_topup, photos, wanted_references, user_id')
-      .eq('is_active', true)
+      .from('public_listings')
+      .select('id, brand, model, reference, price_tier, geo_scope, open_to_topup, photos, wanted_references, country')
+      .eq('is_mine', false)
       .order('created_at', { ascending: false })
 
-    if (user) query = query.neq('user_id', user.id)
     const all = unwrap(await query, 'Browse: fetch listings') || []
 
-    const userIds = [...new Set(all.map(l => l.user_id))]
-    let countryMap = {}
-    if (userIds.length > 0) {
-      const publicProfiles = unwrap(
-        await supabase.from('public_profiles').select('id, country').in('id', userIds),
-        'Browse: fetch public profiles'
-      )
-      countryMap = Object.fromEntries((publicProfiles || []).map(p => [p.id, p.country]))
-    }
-
-    setListings(all.map(l => ({ ...l, profiles: { country: countryMap[l.user_id] || null } })))
+    setListings(all.map(l => ({ ...l, profiles: { country: l.country || null } })))
     setLoading(false)
   }
 
@@ -352,11 +341,11 @@ export default function Browse() {
       // give the DB trigger a moment to create the match row
       await new Promise(resolve => setTimeout(resolve, 700))
 
-      const theirUserId = theirListing.user_id
       const match = unwrap(
         await supabase.from('matches').select('id')
           .eq('status', 'active')
-          .or(`and(user_a.eq.${user.id},user_b.eq.${theirUserId}),and(user_a.eq.${theirUserId},user_b.eq.${user.id})`)
+          .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+          .or(`listing_a.eq.${listingId},listing_b.eq.${listingId}`)
           .maybeSingle(),
         'Browse: check for match'
       )
