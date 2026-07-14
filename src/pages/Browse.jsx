@@ -5,20 +5,20 @@ import { useAuth } from '../context/auth-context'
 import { useBadges } from '../context/badge-context'
 import { useToast } from '../context/toast-context'
 import { unwrap } from '../lib/db'
-import { PhotoBox, TierBadge, Flag, AnonToken, TIERS, GEO_LABELS } from '../components/primitives'
+import { TIERS, GEO_LABELS } from '../components/primitives'
 
-const gold    = '#A9823F'
-const ink     = '#1C1B19'
-const ink2    = '#6E6A62'
-const ink3    = '#A6A199'
-const stroke  = '#E2DED6'
-const surface = '#FFFFFF'
-const surface2= '#F0EEE9'
-const bg      = '#FBFAF8'
-const strokeMd= '#D4CFC5'
+// ── The Vault × Manufacture — soft ──────────────────────────────────────────
+const bg      = '#F6F6F3'
+const card    = '#FFFFFF'
+const accent  = '#274C6B'
+const ink     = '#16181B'
+const inkSoft = 'rgba(22,24,27,0.55)'
 const sans    = "'Inter', system-ui, sans-serif"
-const mono    = "'Spline Sans Mono', ui-monospace, monospace"
-const serif   = "'Cormorant Garamond', serif"
+const serif   = "'Fraunces', serif"
+
+const cardShadow      = '0 8px 30px rgba(22,24,27,0.08)'
+const cardShadowHover = '0 20px 46px rgba(22,24,27,0.16)'
+const pillShadow      = '0 4px 16px rgba(22,24,27,0.08)'
 
 // ── Dropdown filter pill ───────────────────────────────────────────────────
 function Dropdown({ label, value, setValue, options }) {
@@ -28,30 +28,31 @@ function Dropdown({ label, value, setValue, options }) {
     <div style={{ position: 'relative' }}>
       <button onClick={() => setOpen(o => !o)} style={{
         all: 'unset', cursor: 'pointer',
-        fontFamily: sans, fontSize: 12.5, borderRadius: 999, padding: '8px 14px',
-        border: `1px solid ${isDefault ? stroke : gold}`,
-        color: isDefault ? ink2 : gold,
-        background: isDefault ? 'transparent' : `${gold}12`,
-        display: 'inline-flex', gap: 8,
+        fontFamily: sans, fontSize: 14, borderRadius: 99, padding: '10px 18px',
+        color: isDefault ? ink : '#fff',
+        background: isDefault ? card : accent,
+        boxShadow: isDefault ? pillShadow : `0 8px 22px ${accent}40`,
+        display: 'inline-flex', alignItems: 'center', gap: 8,
+        transition: 'all 300ms ease',
       }}>
-        {isDefault ? label : value} <span style={{ opacity: .6 }}>▾</span>
+        {isDefault ? label : value} <span style={{ opacity: .6, fontSize: 11 }}>▾</span>
       </button>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 18 }} />
           <div style={{
-            position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 19,
-            background: surface, border: `1px solid ${stroke}`,
-            borderRadius: 10, padding: 6, minWidth: 150,
-            boxShadow: '0 16px 40px -16px rgba(0,0,0,.35)',
+            position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 19,
+            background: card, borderRadius: 16, padding: 6, minWidth: 150,
+            boxShadow: '0 24px 60px -16px rgba(22,24,27,0.24)',
           }}>
             {options.map(o => (
               <button key={o} onClick={() => { setValue(o); setOpen(false) }} style={{
                 all: 'unset', cursor: 'pointer', display: 'block', width: '100%',
-                boxSizing: 'border-box', fontFamily: sans, fontSize: 13,
-                padding: '8px 10px', borderRadius: 7,
-                color: value === o ? gold : ink,
-                background: value === o ? `${gold}10` : 'transparent',
+                boxSizing: 'border-box', fontFamily: sans, fontSize: 13.5,
+                padding: '9px 12px', borderRadius: 10,
+                color: value === o ? accent : ink,
+                background: value === o ? `${accent}12` : 'transparent',
+                transition: 'background 200ms ease',
               }}>{o}</button>
             ))}
           </div>
@@ -73,49 +74,63 @@ function WatchDrawer({ listing, liked, onLike, onClose }) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'flex', justifyContent: 'flex-end' }}>
       <div onClick={onClose} style={{
         position: 'absolute', inset: 0,
-        background: 'rgba(28,27,25,.34)', animation: 'fadeIn .2s ease',
+        background: 'rgba(22,24,27,.45)', animation: 'fadeIn .3s ease',
       }} />
       <div style={{
         position: 'relative', width: 'min(440px, 92vw)', height: '100%',
-        background: bg, borderLeft: `1px solid ${stroke}`,
-        boxShadow: '-20px 0 50px -20px rgba(0,0,0,.4)',
-        overflowY: 'auto', animation: 'slideIn .28s cubic-bezier(.2,.8,.2,1)',
+        background: bg, borderRadius: '28px 0 0 28px',
+        boxShadow: '-24px 0 60px rgba(22,24,27,.18)',
+        overflowY: 'auto', animation: 'slideIn .35s cubic-bezier(.2,.8,.2,1)',
       }}>
         {/* sticky sub-bar */}
         <div style={{
           position: 'sticky', top: 0, display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', padding: '14px 18px',
-          background: 'rgba(251,250,248,.9)', backdropFilter: 'blur(8px)',
-          borderBottom: `1px solid ${stroke}`,
+          alignItems: 'center', padding: '18px 22px', zIndex: 1,
+          background: 'rgba(246,246,243,.85)', backdropFilter: 'blur(10px)',
         }}>
-          <span style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: '.12em', color: ink3, textTransform: 'uppercase' }}>
+          <span style={{ fontFamily: sans, fontSize: 11, letterSpacing: '.1em', color: inkSoft, textTransform: 'uppercase' }}>
             Listing detail
           </span>
-          <button onClick={onClose} style={{ all: 'unset', cursor: 'pointer', fontSize: 18, color: ink2, lineHeight: 1 }}>✕</button>
+          <button onClick={onClose} style={{ all: 'unset', cursor: 'pointer', fontSize: 18, color: ink, lineHeight: 1 }}>✕</button>
         </div>
 
-        <div style={{ padding: 18 }}>
-          <PhotoBox h={260} big src={mainPhoto} label="watch photo · 1 / 4" />
+        <div style={{ padding: '4px 22px 22px' }}>
+          <div style={{
+            position: 'relative', height: 280, borderRadius: 22, overflow: 'hidden',
+            background: mainPhoto ? card : accent, boxShadow: cardShadow,
+          }}>
+            {mainPhoto && <img src={mainPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+          </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
             {[0,1,2,3].map(i => (
-              <PhotoBox key={i} h={56} w={56} r={6} src={listing.photos?.[i+1]} />
+              <div key={i} style={{
+                width: 56, height: 56, borderRadius: 14, overflow: 'hidden', background: card,
+                boxShadow: '0 4px 14px rgba(22,24,27,.08)',
+              }}>
+                {listing.photos?.[i+1] && (
+                  <img src={listing.photos[i+1]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                )}
+              </div>
             ))}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 18, gap: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 22, gap: 12 }}>
             <div>
-              <div style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: '.08em', color: ink3, textTransform: 'uppercase' }}>
+              <div style={{ fontFamily: sans, fontSize: 11, letterSpacing: '.08em', color: inkSoft, textTransform: 'uppercase' }}>
                 {listing.brand}
               </div>
-              <div style={{ fontFamily: serif, fontSize: 27, fontWeight: 600, color: ink, marginTop: 3 }}>
+              <div style={{ fontFamily: serif, fontSize: 28, fontWeight: 600, color: ink, marginTop: 4 }}>
                 {listing.model}
               </div>
             </div>
-            <TierBadge tier={listing.price_tier} />
+            <span style={{
+              fontFamily: sans, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+              color: accent, background: `${accent}0F`, borderRadius: 99, padding: '7px 13px',
+            }}>{tier.label || listing.price_tier}</span>
           </div>
 
           {/* 2-col detail grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 20px', marginTop: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px 20px', marginTop: 22 }}>
             {[
               ['Reference',       listing.reference || '—'],
               ['Price tier',      tier.range || '—'],
@@ -124,48 +139,53 @@ function WatchDrawer({ listing, liked, onLike, onClose }) {
               ['Open to top-up',  listing.open_to_topup ? 'Yes ⇅' : 'Straight swap'],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <span style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: '.07em', color: ink3, textTransform: 'uppercase' }}>{k}</span>
+                <span style={{ fontFamily: sans, fontSize: 10.5, letterSpacing: '.06em', color: inkSoft, textTransform: 'uppercase' }}>{k}</span>
                 <span style={{ fontFamily: sans, fontSize: 14.5, color: ink, fontWeight: 500 }}>{v}</span>
               </div>
             ))}
           </div>
 
-          <div style={{ height: 1, background: stroke, margin: '20px 0' }} />
+          <div style={{ height: 1, background: 'rgba(22,24,27,.08)', margin: '24px 0' }} />
 
-          <span style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: '.07em', color: ink3, textTransform: 'uppercase' }}>
+          <span style={{ fontFamily: sans, fontSize: 10.5, letterSpacing: '.06em', color: inkSoft, textTransform: 'uppercase' }}>
             Wants in return
           </span>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
             {(listing.wanted_references || []).map(t => (
               <span key={t} style={{
-                fontFamily: sans, fontSize: 12, color: ink2,
-                border: `1px solid ${stroke}`, borderRadius: 999, padding: '6px 12px',
+                fontFamily: sans, fontSize: 12.5, color: ink,
+                background: card, boxShadow: '0 4px 14px rgba(22,24,27,.06)',
+                borderRadius: 99, padding: '7px 14px',
               }}>{t}</span>
             ))}
             {(!listing.wanted_references?.length) && (
-              <span style={{ fontFamily: sans, fontSize: 12, color: ink3 }}>Not specified</span>
+              <span style={{ fontFamily: sans, fontSize: 12.5, color: inkSoft }}>Not specified</span>
             )}
           </div>
 
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            background: surface2, borderRadius: 10, padding: '12px 14px', marginTop: 22,
+            display: 'flex', alignItems: 'center', gap: 12,
+            background: card, borderRadius: 16, padding: '14px 16px', marginTop: 24,
+            boxShadow: '0 4px 14px rgba(22,24,27,.06)',
           }}>
-            <AnonToken size={30} />
-            <span style={{ fontFamily: sans, fontSize: 12.5, color: ink2, lineHeight: 1.4 }}>
+            <span style={{
+              width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+              background: `${accent}14`, color: accent,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
+            }}>◍</span>
+            <span style={{ fontFamily: sans, fontSize: 12.5, color: inkSoft, lineHeight: 1.5 }}>
               Owner stays anonymous until you both like each other's watch.
             </span>
           </div>
 
           <button onClick={() => onLike(listing.id)} style={{
             all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
-            marginTop: 18, width: '100%', textAlign: 'center',
+            marginTop: 20, width: '100%', textAlign: 'center',
             fontFamily: sans, fontSize: 15, fontWeight: 600,
-            padding: '14px 0', borderRadius: 10,
-            color: liked ? gold : '#fff',
-            background: liked ? `${gold}16` : gold,
-            border: `1px solid ${gold}`,
-            transition: 'all .16s ease',
+            padding: '16px 0', borderRadius: 99,
+            color: liked ? accent : '#fff',
+            background: liked ? `${accent}16` : accent,
+            transition: 'all 300ms ease',
           }}>
             {liked ? '♥  Liked — waiting for them' : '♡  Like this watch'}
           </button>
@@ -175,63 +195,128 @@ function WatchDrawer({ listing, liked, onLike, onClose }) {
   )
 }
 
+// ── LikeButton ─────────────────────────────────────────────────────────────
+// Plain in-flow circle — never overlaid by a photo/gradient, so it can never
+// lose clicks to a stacking/pointer-events issue.
+function LikeButton({ liked, onLike, listingId, size = 40, fontSize = 17 }) {
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); onLike(listingId) }}
+      aria-label="Like"
+      style={{
+        all: 'unset', cursor: 'pointer', position: 'relative', zIndex: 1,
+        width: size, height: size, borderRadius: '50%',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize,
+        background: liked ? accent : card,
+        color: liked ? '#fff' : ink,
+        boxShadow: liked ? `0 0 0 5px ${accent}22` : pillShadow,
+        transition: 'all 300ms ease',
+        flexShrink: 0,
+      }}
+    >{liked ? '♥' : '♡'}</button>
+  )
+}
+
+// ── Tier meta line ─────────────────────────────────────────────────────────
+function TierMeta({ priceTier }) {
+  const tier = TIERS[priceTier] || { fullLabel: priceTier, range: '' }
+  return (
+    <div style={{
+      fontFamily: sans, fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase',
+      color: accent,
+    }}>
+      {tier.fullLabel}{tier.range ? ` · ${tier.range}` : ''}
+    </div>
+  )
+}
+
 // ── WatchCard ──────────────────────────────────────────────────────────────
 function WatchCard({ listing, liked, onLike, onOpen }) {
-  const geoLabel = GEO_LABELS[listing.geo_scope] || listing.geo_scope || ''
-  const country = listing.profiles?.country || '—'
+  const country = listing.profiles?.country || null
   const mainPhoto = listing.photos?.[0]
 
+  function handleEnter(e) {
+    e.currentTarget.style.transform = 'translateY(-4px)'
+    e.currentTarget.style.boxShadow = cardShadowHover
+  }
+  function handleLeave(e) {
+    e.currentTarget.style.transform = 'translateY(0)'
+    e.currentTarget.style.boxShadow = cardShadow
+  }
+
   return (
-    <div onClick={onOpen} style={{
-      cursor: 'pointer', background: surface,
-      border: `1px solid ${liked ? gold + '88' : stroke}`,
-      borderRadius: 12, overflow: 'hidden',
-      boxShadow: liked
-        ? `0 10px 30px -14px ${gold}77`
-        : '0 10px 26px -18px rgba(0,0,0,.4)',
-      transition: 'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
-    }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)' }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)' }}
-    >
-      <div style={{ position: 'relative' }}>
-        <PhotoBox h={188} r={0} src={mainPhoto} label="" />
-        <span style={{ position: 'absolute', top: 12, left: 12 }}>
-          <TierBadge tier={listing.price_tier} />
-        </span>
-        <button
-          onClick={e => { e.stopPropagation(); onLike(listing.id) }}
-          aria-label="Like"
-          style={{
-            all: 'unset', cursor: 'pointer',
-            position: 'absolute', top: 10, right: 10,
-            width: 38, height: 38, borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18,
-            background: liked ? gold : 'rgba(255,255,255,.9)',
-            color: liked ? '#fff' : ink2,
-            border: `1px solid ${liked ? gold : stroke}`,
-            boxShadow: liked ? `0 0 0 5px ${gold}22` : '0 2px 8px -2px rgba(0,0,0,.2)',
-            transition: 'all .16s ease',
-          }}
-        >{liked ? '♥' : '♡'}</button>
+    <div onClick={onOpen} onMouseEnter={handleEnter} onMouseLeave={handleLeave} style={{
+      cursor: 'pointer', borderRadius: 22, overflow: 'hidden', background: card,
+      boxShadow: cardShadow,
+      transition: 'transform 400ms ease, box-shadow 400ms ease',
+    }}>
+      <div style={{ aspectRatio: '4 / 3', background: mainPhoto ? card : accent }}>
+        {mainPhoto && (
+          <img src={mainPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        )}
       </div>
 
-      <div style={{ padding: '14px 15px 15px' }}>
-        <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: '.08em', color: ink3, textTransform: 'uppercase' }}>
-          {listing.brand}
+      <div style={{ padding: 18 }}>
+        <div style={{ fontFamily: serif, fontSize: 22, fontWeight: 500, color: ink }}>
+          {listing.brand} {listing.model}
         </div>
-        <div style={{ fontFamily: serif, fontSize: 21, fontWeight: 600, color: ink, marginTop: 3 }}>
-          {listing.model}
+        <div style={{ marginTop: 6 }}>
+          <TierMeta priceTier={listing.price_tier} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 13 }}>
-          <Flag code={country} />
-          <span style={{ width: 1, height: 12, background: stroke }} />
-          {listing.open_to_topup && <span title="Open to top-up" style={{ color: gold, fontSize: 13 }}>⇅</span>}
-          <span style={{ fontFamily: sans, fontSize: 11.5, color: ink2 }}>{geoLabel}</span>
-          <span style={{ flex: 1 }} />
-          <AnonToken size={22} />
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {country && (
+              <span style={{ fontFamily: sans, fontSize: 13, color: 'rgba(22,24,27,.7)' }}>{country.toUpperCase()}</span>
+            )}
+            {listing.open_to_topup && (
+              <span style={{
+                fontFamily: sans, fontSize: 11, color: ink,
+                border: '1px solid rgba(22,24,27,.15)', borderRadius: 99, padding: '3px 10px',
+              }}>top-up</span>
+            )}
+          </div>
+
+          <LikeButton liked={liked} onLike={onLike} listingId={listing.id} />
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── FeaturedCard ───────────────────────────────────────────────────────────
+function FeaturedCard({ listing, liked, onLike }) {
+  const mainPhoto = listing.photos?.[0]
+
+  function handleEnter(e) { e.currentTarget.style.boxShadow = cardShadowHover }
+  function handleLeave(e) { e.currentTarget.style.boxShadow = cardShadow }
+
+  return (
+    <div onMouseEnter={handleEnter} onMouseLeave={handleLeave} style={{
+      borderRadius: 28, overflow: 'hidden', background: card,
+      boxShadow: cardShadow, transition: 'box-shadow 400ms ease',
+    }}>
+      <div className="browse-hero" style={{ height: 340, background: mainPhoto ? card : accent }}>
+        {mainPhoto && (
+          <img src={mainPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        )}
+      </div>
+
+      <div style={{
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
+        padding: '24px 28px 28px',
+      }}>
+        <div>
+          <div className="browse-hero-title" style={{ fontFamily: serif, fontSize: 34, fontWeight: 500, color: ink }}>
+            {listing.brand} {listing.model}
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <TierMeta priceTier={listing.price_tier} />
+          </div>
+        </div>
+
+        <LikeButton liked={liked} onLike={onLike} listingId={listing.id} size={44} fontSize={19} />
       </div>
     </div>
   )
@@ -309,7 +394,10 @@ export default function Browse() {
       navigate('/create-listing')
       return
     }
-    if (matchedIds.has(listingId)) return
+    if (matchedIds.has(listingId)) {
+      flash("You're already matched on this one — check your matches.")
+      return
+    }
 
     if (likedIds.has(listingId)) {
       const { error } = await supabase.from('likes').delete().eq('from_user', user.id).eq('to_listing', listingId)
@@ -369,8 +457,10 @@ export default function Browse() {
   const filtersActive = tier !== 'Any tier' || geo !== 'Anywhere' || topupOnly
   function clearFilters() { setTier('Any tier'); setGeo('Anywhere'); setTopupOnly(false) }
 
+  const featured = listings[0] || null
+
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: ink3, fontFamily: sans, fontSize: 14 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: inkSoft, fontFamily: sans, fontSize: 14 }}>
       Loading watches…
     </div>
   )
@@ -378,36 +468,42 @@ export default function Browse() {
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 26px 40px' }}>
       {/* page head */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ margin: 0, fontFamily: serif, fontWeight: 600, fontSize: 32, color: ink, lineHeight: 1, whiteSpace: 'nowrap' }}>
-            Browse the floor
-          </h1>
-          <span style={{ fontFamily: sans, fontSize: 13, color: ink3 }}>
-            {list.length} watches open to swap · identities hidden until you match
-          </span>
+      <div>
+        <h1 style={{ margin: 0, fontFamily: serif, fontWeight: 600, fontSize: 34, color: ink }}>
+          Browse the floor
+        </h1>
+        <div style={{ marginTop: 8, fontFamily: sans, fontSize: 13, color: inkSoft }}>
+          {list.length} watches open to swap · identities hidden until you match
         </div>
       </div>
+
+      {/* featured card */}
+      {featured && (
+        <div style={{ marginTop: 22 }}>
+          <FeaturedCard listing={featured} liked={likedIds.has(featured.id)} onLike={handleLike} />
+        </div>
+      )}
 
       {/* filter bar */}
       <div style={{
         display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap',
-        margin: '20px 0 0', paddingBottom: 18, borderBottom: `1px solid ${stroke}`,
+        margin: '24px 0 0',
       }}>
         <Dropdown label="Price tier" value={tier} setValue={setTier} options={TIER_OPTS} />
         <Dropdown label="Geography"  value={geo}  setValue={setGeo}  options={GEO_OPTS} />
         <button onClick={() => setTopupOnly(v => !v)} style={{
           all: 'unset', cursor: 'pointer',
-          fontFamily: sans, fontSize: 12.5, borderRadius: 999, padding: '8px 14px',
-          border: `1px solid ${topupOnly ? gold : stroke}`,
-          color: topupOnly ? gold : ink2,
-          background: topupOnly ? `${gold}12` : 'transparent',
-          display: 'inline-flex', gap: 6,
+          fontFamily: sans, fontSize: 14, borderRadius: 99, padding: '10px 18px',
+          color: topupOnly ? '#fff' : ink,
+          background: topupOnly ? accent : card,
+          boxShadow: topupOnly ? `0 8px 22px ${accent}40` : pillShadow,
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          transition: 'all 300ms ease',
         }}>⇅ Open to top-up</button>
         <span style={{ flex: 1 }} />
         {filtersActive && (
           <button onClick={clearFilters} style={{
-            all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 12.5, color: ink3,
+            all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 12.5, color: inkSoft,
           }}>Clear ✕</button>
         )}
       </div>
@@ -415,7 +511,7 @@ export default function Browse() {
       {/* grid */}
       {list.length > 0 ? (
         <div className="browse-grid" style={{
-          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginTop: 22,
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginTop: 26,
         }}>
           {list.map(l => (
             <WatchCard
@@ -428,7 +524,7 @@ export default function Browse() {
           ))}
         </div>
       ) : (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: ink3, fontFamily: sans, fontSize: 14 }}>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: inkSoft, fontFamily: sans, fontSize: 14 }}>
           {filtersActive ? 'No watches match these filters.' : 'No watches listed yet.'}
         </div>
       )}
