@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
@@ -18,7 +18,7 @@ const sans    = "'Inter', system-ui, sans-serif"
 const serif   = "'Cormorant Garamond', serif"
 const mono    = "'Spline Sans Mono', ui-monospace, monospace"
 
-const STEPS = ['Brand', 'Model', 'Reference', 'Photos', 'Price tier', 'Scope', 'Top-up', 'Wishlist']
+const STEPS = ['Your watch', 'Photos', 'Price tier', 'Scope', 'Top-up', 'Wishlist']
 
 const GEO_OPTIONS = [
   { label: 'Local',      value: 'local' },
@@ -154,6 +154,111 @@ function PhotoStep({ files, setFiles }) {
   )
 }
 
+// Same searchable catalog picker used by both the "Your watch" step and the
+// wishlist step: matches brand, model, reference and variant, case-insensitive.
+function ReferenceSearch({ catalog, query, onQueryChange, onSelect, excludeIds, noMatchesLabel }) {
+  const q = query.trim().toLowerCase()
+  const results = q
+    ? catalog
+        .filter(r => !excludeIds || !excludeIds.includes(r.id))
+        .filter(r => `${r.brand} ${r.model} ${r.reference} ${r.variant || ''}`.toLowerCase().includes(q))
+        .slice(0, 6)
+    : []
+  const noMatches = q.length > 0 && results.length === 0
+
+  return (
+    <div>
+      <TextInput value={query} onChange={onQueryChange} placeholder="Search: brand, model or reference…" />
+      {q && (
+        results.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+            {results.map(r => (
+              <button key={r.id} onClick={() => onSelect(r)} style={{
+                all: 'unset', cursor: 'pointer', boxSizing: 'border-box', width: '100%', maxWidth: 420,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                border: `1px solid ${stroke}`, borderRadius: 10, padding: '10px 14px', background: bg,
+              }}>
+                <div>
+                  <div style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: ink }}>
+                    {r.brand} {r.model}
+                  </div>
+                  {r.variant && (
+                    <div style={{ fontFamily: sans, fontSize: 12, color: ink3, marginTop: 2 }}>{r.variant}</div>
+                  )}
+                </div>
+                <span style={{ fontFamily: mono, fontSize: 12.5, color: ink2, marginLeft: 12 }}>{r.reference}</span>
+              </button>
+            ))}
+          </div>
+        ) : noMatches && (
+          <div style={{ fontFamily: sans, fontSize: 13, color: ink3, marginTop: 10 }}>
+            {noMatchesLabel}
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
+function WatchStep({ catalog, query, onQueryChange, selectedRef, onSelect, onClear, manualMode, onToggleManual, data, set }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {!manualMode && (
+        selectedRef ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            border: `1px solid ${gold}`, borderRadius: 10, padding: '14px 18px', background: `${gold}0A`,
+          }}>
+            <div>
+              <div style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: ink }}>
+                {selectedRef.brand} {selectedRef.model}
+              </div>
+              {selectedRef.variant && (
+                <div style={{ fontFamily: sans, fontSize: 12.5, color: ink2, marginTop: 2 }}>{selectedRef.variant}</div>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <span style={{ fontFamily: mono, fontSize: 13, color: ink2 }}>{selectedRef.reference}</span>
+              <button onClick={onClear} style={{
+                all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 12.5, fontWeight: 600,
+                color: ink2, border: `1px solid ${stroke}`, borderRadius: 8, padding: '7px 12px',
+              }}>Change</button>
+            </div>
+          </div>
+        ) : (
+          <ReferenceSearch
+            catalog={catalog}
+            query={query}
+            onQueryChange={onQueryChange}
+            onSelect={onSelect}
+            noMatchesLabel="Not in our catalog — enter it manually below"
+          />
+        )
+      )}
+
+      {!manualMode && (
+        <button onClick={onToggleManual} style={{
+          all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13, color: gold, width: 'fit-content',
+        }}>Can't find your watch? Enter manually</button>
+      )}
+
+      {manualMode && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Field label="Brand"><TextInput value={data.brand} onChange={v => set('brand', v)} placeholder="e.g. Rolex" /></Field>
+          <Field label="Model"><TextInput value={data.model} onChange={v => set('model', v)} placeholder="e.g. Submariner Date" /></Field>
+          <Field label="Reference number"><TextInput value={data.ref} onChange={v => set('ref', v)} placeholder="e.g. 126610LN" /></Field>
+          <span style={{ fontFamily: sans, fontSize: 12, color: ink3 }}>
+            Manual entries are not included in automatic matching.
+          </span>
+          <button onClick={onToggleManual} style={{
+            all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13, color: gold, width: 'fit-content',
+          }}>Search catalog instead</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TierStep({ value, onChange }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -201,31 +306,38 @@ function ChoiceRow({ value, onChange, options, hint }) {
   )
 }
 
-function WishlistStep({ wants, setWants }) {
-  const [draft, setDraft] = useState('')
-  function add() { if (draft.trim()) { setWants([...wants, draft.trim()]); setDraft('') } }
+function WishlistStep({ catalog, wants, setWants }) {
+  const [query, setQuery] = useState('')
+
+  function addRef(r) {
+    if (!wants.some(w => w.id === r.id)) setWants([...wants, r])
+    setQuery('')
+  }
+  function removeRef(id) { setWants(wants.filter(w => w.id !== id)) }
+
   return (
     <div>
       <div style={{ fontFamily: sans, fontSize: 13.5, color: ink2, marginBottom: 14 }}>
         Which references would you swap this for?
       </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <TextInput value={draft} onChange={setDraft} placeholder="e.g. Patek Aquanaut" />
-        <button onClick={add} style={{
-          all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13.5, fontWeight: 600,
-          color: gold, border: `1px solid ${gold}`, borderRadius: 10,
-          padding: '0 18px', display: 'inline-flex', alignItems: 'center',
-        }}>Add</button>
-      </div>
+      <ReferenceSearch
+        catalog={catalog}
+        query={query}
+        onQueryChange={setQuery}
+        onSelect={addRef}
+        excludeIds={wants.map(w => w.id)}
+        noMatchesLabel="No matches in catalog"
+      />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
-        {wants.map((t, i) => (
-          <span key={i} style={{
+        {wants.map(w => (
+          <span key={w.id} style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             fontFamily: sans, fontSize: 13, color: ink2,
             border: `1px solid ${stroke}`, borderRadius: 999, padding: '7px 8px 7px 14px',
           }}>
-            {t}
-            <button onClick={() => setWants(wants.filter((_, j) => j !== i))} style={{
+            {w.brand} {w.model}
+            <span style={{ fontFamily: mono, fontSize: 11.5, color: ink3 }}>{w.reference}</span>
+            <button onClick={() => removeRef(w.id)} style={{
               all: 'unset', cursor: 'pointer', color: ink3, fontSize: 14,
             }}>✕</button>
           </span>
@@ -250,10 +362,51 @@ export default function CreateListing() {
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState('')
 
+  const [catalog, setCatalog] = useState([])
+  const [query, setQuery] = useState('')
+  const [selectedRef, setSelectedRef] = useState(null)
+  const [manualMode, setManualMode] = useState(false)
+
   const set = (k, v) => setData(d => ({ ...d, [k]: v }))
 
+  useEffect(() => {
+    let cancelled = false
+    async function loadCatalog() {
+      const result = await supabase
+        .from('watch_references')
+        .select('id, reference, variant, price_tier, watch_models(name, watch_brands(name))')
+      const rows = unwrap(result, 'CreateListing: load watch catalog')
+      if (!rows || cancelled) return
+      setCatalog(rows.map(r => ({
+        id: r.id,
+        reference: r.reference,
+        variant: r.variant,
+        price_tier: r.price_tier,
+        model: r.watch_models?.name ?? '',
+        brand: r.watch_models?.watch_brands?.name ?? '',
+      })))
+    }
+    loadCatalog()
+    return () => { cancelled = true }
+  }, [])
+
+  function selectRef(r) {
+    setSelectedRef(r)
+    setQuery('')
+    setData(d => ({ ...d, brand: '', model: '', ref: '' }))
+  }
+  function clearRef() { setSelectedRef(null) }
+  function toggleManual() {
+    if (!manualMode) setSelectedRef(null)
+    setManualMode(m => !m)
+  }
+
   async function handlePublish() {
-    if (!data.brand || !data.model) { setError('Brand and model are required.'); return }
+    const manualValid = data.brand.trim() && data.model.trim() && data.ref.trim()
+    if (!selectedRef && !manualValid) {
+      setError('Select a watch from the catalog, or fill in brand, model and reference.')
+      return
+    }
     setPublishing(true); setError('')
     try {
       const photoUrls = []
@@ -269,12 +422,24 @@ export default function CreateListing() {
         photoUrls.push(urlData.publicUrl)
       }
 
+      const watchFields = selectedRef
+        ? {
+            reference_id: selectedRef.id,
+            brand: selectedRef.brand, model: selectedRef.model, reference: selectedRef.reference,
+            price_tier: selectedRef.price_tier,
+          }
+        : {
+            reference_id: null,
+            brand: data.brand, model: data.model, reference: data.ref,
+            price_tier: data.tier,
+          }
+
       const insertResult = await supabase.from('listings').insert({
         user_id: user.id,
-        brand: data.brand, model: data.model, reference: data.ref,
-        price_tier: data.tier, geo_scope: data.scope,
+        ...watchFields,
+        geo_scope: data.scope,
         open_to_topup: data.topup,
-        wanted_references: data.wants,
+        wanted_references: data.wants.map(w => w.reference),
         photos: photoUrls, is_active: true,
       })
       unwrap(insertResult, 'CreateListing: publish listing')
@@ -336,13 +501,36 @@ export default function CreateListing() {
           Step {step + 1} · {STEPS[step]}
         </div>
 
-        {step === 0 && <Field label="Brand"><TextInput value={data.brand} onChange={v => set('brand', v)} placeholder="e.g. Rolex" /></Field>}
-        {step === 1 && <Field label="Model"><TextInput value={data.model} onChange={v => set('model', v)} placeholder="e.g. Submariner Date" /></Field>}
-        {step === 2 && <Field label="Reference number"><TextInput value={data.ref} onChange={v => set('ref', v)} placeholder="e.g. 126610LN" /></Field>}
-        {step === 3 && <PhotoStep files={photos} setFiles={setPhotos} />}
-        {step === 4 && <TierStep value={data.tier} onChange={v => set('tier', v)} />}
-        {step === 5 && <ChoiceRow value={data.scope} onChange={v => set('scope', v)} options={GEO_OPTIONS} />}
-        {step === 6 && (
+        {step === 0 && (
+          <WatchStep
+            catalog={catalog}
+            query={query} onQueryChange={setQuery}
+            selectedRef={selectedRef} onSelect={selectRef} onClear={clearRef}
+            manualMode={manualMode} onToggleManual={toggleManual}
+            data={data} set={set}
+          />
+        )}
+        {step === 1 && <PhotoStep files={photos} setFiles={setPhotos} />}
+        {step === 2 && (
+          selectedRef ? (
+            <div style={{ fontFamily: sans, fontSize: 14, color: ink2 }}>
+              Price tier is set automatically from the catalog:
+              <div style={{ marginTop: 10 }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  fontFamily: serif, fontSize: 18, fontWeight: 600, color: gold,
+                  border: `1px solid ${gold}`, borderRadius: 10, padding: '10px 18px', background: `${gold}10`,
+                }}>
+                  {TIERS[selectedRef.price_tier]?.fullLabel ?? selectedRef.price_tier}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <TierStep value={data.tier} onChange={v => set('tier', v)} />
+          )
+        )}
+        {step === 3 && <ChoiceRow value={data.scope} onChange={v => set('scope', v)} options={GEO_OPTIONS} />}
+        {step === 4 && (
           <ChoiceRow
             value={data.topup ? 'yes' : 'no'}
             onChange={v => set('topup', v === 'yes')}
@@ -350,7 +538,7 @@ export default function CreateListing() {
             hint="Are you open to a cash top-up to balance the swap?"
           />
         )}
-        {step === 7 && <WishlistStep wants={data.wants} setWants={v => set('wants', v)} />}
+        {step === 5 && <WishlistStep catalog={catalog} wants={data.wants} setWants={v => set('wants', v)} />}
 
         {error && (
           <div style={{
