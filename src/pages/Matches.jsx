@@ -4,34 +4,87 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
 import { useBadges } from '../context/badge-context'
 import { unwrap } from '../lib/db'
-import { PhotoBox, Flag } from '../components/primitives'
+import { Flag } from '../components/primitives'
 
-const gold    = '#A9823F'
-const ink     = '#1C1B19'
-const ink2    = '#6E6A62'
-const ink3    = '#A6A199'
-const stroke  = '#E2DED6'
-const strokeMd= '#D4CFC5'
-const surface = '#FFFFFF'
-const bg      = '#FBFAF8'
-const green   = '#3F9D6E'
+// ── The Vault × Manufacture — soft ──────────────────────────────────────────
+const card    = '#FFFFFF'
+const accent  = '#274C6B'
+const ink     = '#16181B'
+const inkSoft = 'rgba(22,24,27,0.55)'
 const sans    = "'Inter', system-ui, sans-serif"
-const serif   = "'Cormorant Garamond', serif"
-const mono    = "'Spline Sans Mono', ui-monospace, monospace"
+const serif   = "'Fraunces', serif"
+
+const cardShadow      = '0 8px 30px rgba(22,24,27,0.08)'
+const cardShadowHover = '0 14px 36px rgba(22,24,27,0.14)'
 
 function MatchesEmpty() {
   return (
     <div style={{
-      marginTop: 40, border: `1px dashed ${strokeMd}`, borderRadius: 16,
-      padding: '60px 24px', textAlign: 'center',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+      marginTop: 32, background: card, borderRadius: 22, boxShadow: cardShadow,
+      padding: '64px 24px', textAlign: 'center',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
     }}>
-      <span style={{ fontSize: 40, color: ink3 }}>⌚</span>
-      <span style={{ fontFamily: serif, fontSize: 24, color: ink }}>No matches yet</span>
-      <span style={{ fontFamily: sans, fontSize: 13.5, color: ink3, maxWidth: 320, lineHeight: 1.5 }}>
+      <span style={{ fontFamily: serif, fontSize: 22, color: ink }}>No matches yet</span>
+      <span style={{ fontFamily: sans, fontSize: 13.5, color: inkSoft, maxWidth: 320, lineHeight: 1.5 }}>
         When someone likes your watch back, they'll appear here — and you'll be able to chat and arrange the swap.
       </span>
     </div>
+  )
+}
+
+function MatchRow({ m, onOpen }) {
+  const theirPhoto = m.listing?.photos?.[0]
+  const metaParts = [m.listing?.brand, m.listing?.reference].filter(Boolean)
+  const meta = [metaParts.join(' · '), timeAgo(m.createdAt)].filter(Boolean).join(' · ')
+
+  return (
+    <button
+      className="match-row"
+      onClick={() => onOpen(m.matchId)}
+      onMouseEnter={e => {
+        e.currentTarget.style.boxShadow = cardShadowHover
+        e.currentTarget.style.transform = 'translateY(-2px)'
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.boxShadow = cardShadow
+        e.currentTarget.style.transform = 'translateY(0)'
+      }}
+      style={{
+        all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
+        display: 'flex', alignItems: 'center', gap: 18, width: '100%',
+        background: card, borderRadius: 22, padding: '16px 20px',
+        boxShadow: cardShadow, transition: 'box-shadow 300ms ease, transform 300ms ease',
+      }}
+    >
+      <div style={{ width: 64, height: 64, borderRadius: 16, overflow: 'hidden', flexShrink: 0, background: theirPhoto ? card : accent }}>
+        {theirPhoto && <img src={theirPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontFamily: sans, fontSize: 15, fontWeight: 500, color: ink }}>
+            {m.profile?.name || 'Unknown'}
+          </span>
+          <Flag code={m.profile?.country} />
+          {m.unseen && <span style={{ width: 8, height: 8, borderRadius: '50%', background: accent, flexShrink: 0 }} />}
+        </div>
+        <span style={{
+          fontFamily: serif, fontSize: 18, color: ink,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {m.listing?.model || 'Their watch'}
+        </span>
+        <span style={{ fontFamily: sans, fontSize: 13, color: inkSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {meta}
+        </span>
+      </div>
+
+      <span className="match-cta" style={{
+        flexShrink: 0, fontFamily: sans, fontSize: 13, color: ink,
+        border: '1px solid rgba(22,24,27,0.15)', borderRadius: 99, padding: '9px 16px',
+        whiteSpace: 'nowrap', transition: 'all 300ms ease',
+      }}>Open chat →</span>
+    </button>
   )
 }
 
@@ -61,7 +114,7 @@ export default function Matches() {
     const [matchesResult, myListingResult] = await Promise.all([
       supabase.from('matches').select('*')
         .or(`user_a.eq.${user.id},user_b.eq.${user.id}`).eq('status', 'active'),
-      supabase.from('listings').select('id, brand, model, photos')
+      supabase.from('listings').select('id, brand, model, reference, photos')
         .eq('user_id', user.id).eq('is_active', true).single(),
     ])
     const rawMatches = unwrap(matchesResult, 'Matches: fetch matches')
@@ -75,7 +128,7 @@ export default function Matches() {
 
     const [profilesResult, listingsResult] = await Promise.all([
       supabase.from('profiles').select('id, name, country').in('id', otherUserIds),
-      supabase.from('listings').select('id, brand, model, photos').in('id', otherListingIds),
+      supabase.from('listings').select('id, brand, model, reference, photos').in('id', otherListingIds),
     ])
     const profiles = unwrap(profilesResult, 'Matches: fetch matched profiles')
     const listings = unwrap(listingsResult, 'Matches: fetch matched listings')
@@ -123,7 +176,7 @@ export default function Matches() {
   }
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: ink3, fontFamily: sans, fontSize: 14 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: inkSoft, fontFamily: sans, fontSize: 14 }}>
       Loading matches…
     </div>
   )
@@ -134,68 +187,25 @@ export default function Matches() {
     <div style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 26px 40px' }}>
       {/* page head */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <h1 style={{ margin: 0, fontFamily: serif, fontWeight: 600, fontSize: 32, color: ink, lineHeight: 1 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <h1 style={{ margin: 0, fontFamily: serif, fontWeight: 600, fontSize: 34, color: ink }}>
             Matches
           </h1>
-          <span style={{ fontFamily: sans, fontSize: 13, color: ink3 }}>
+          <span style={{ fontFamily: sans, fontSize: 13, color: inkSoft }}>
             Mutual likes. Identity revealed — now you can talk.
           </span>
         </div>
         {newCount > 0 && (
           <span style={{
-            fontFamily: sans, fontSize: 12, color: '#fff',
-            background: green, borderRadius: 999, padding: '5px 12px', fontWeight: 600,
+            fontFamily: sans, fontSize: 12, fontWeight: 600, color: '#fff',
+            background: accent, borderRadius: 999, padding: '5px 12px',
           }}>{newCount} new</span>
         )}
       </div>
 
       {matches.length === 0 ? <MatchesEmpty /> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 24 }}>
-          {matches.map(m => {
-            const theirPhoto = m.listing?.photos?.[0]
-            const myPhoto    = myListing?.photos?.[0]
-            return (
-              <button key={m.matchId} onClick={() => openChat(m.matchId)} style={{
-                all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
-                display: 'flex', alignItems: 'center', gap: 18, width: '100%',
-                background: surface,
-                border: `1px solid ${m.unseen ? green + '66' : stroke}`,
-                borderRadius: 12, padding: 14,
-                boxShadow: '0 8px 22px -18px rgba(0,0,0,.4)',
-                transition: 'border-color .15s, box-shadow .15s',
-              }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 28px -14px rgba(0,0,0,.2)' }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 8px 22px -18px rgba(0,0,0,.4)' }}
-              >
-                {/* both watches */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                  <PhotoBox h={58} w={74} r={8} src={myPhoto} />
-                  <span style={{ color: gold, fontSize: 18 }}>⇄</span>
-                  <PhotoBox h={58} w={74} r={8} src={theirPhoto} />
-                </div>
-
-                {/* info */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                    <span style={{ fontFamily: sans, fontSize: 15.5, fontWeight: 600, color: ink }}>
-                      {m.profile?.name || 'Unknown'}
-                    </span>
-                    <Flag code={m.profile?.country} />
-                    {m.unseen && <span style={{ width: 8, height: 8, borderRadius: '50%', background: green, flexShrink: 0 }} />}
-                  </div>
-                  <span style={{ fontFamily: sans, fontSize: 12, color: ink3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {m.listing?.model || 'Their watch'} ⇄ your {myListing?.model || 'watch'} · {timeAgo(m.createdAt)}
-                  </span>
-                </div>
-
-                <span className="match-cta" style={{
-                  fontFamily: sans, fontSize: 13, color: gold,
-                  border: `1px solid ${gold}66`, borderRadius: 8, padding: '9px 15px', whiteSpace: 'nowrap',
-                }}>Open chat →</span>
-              </button>
-            )
-          })}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
+          {matches.map(m => <MatchRow key={m.matchId} m={m} onOpen={openChat} />)}
         </div>
       )}
     </div>

@@ -69,6 +69,12 @@ button, input, select, textarea { font-family: inherit; }
   .drawer-like-btn { width: 100% !important; }
 }
 
+.match-row:hover .match-cta {
+  background: #274C6B;
+  color: #fff;
+  border-color: transparent;
+}
+
 /* scrollbar */
 * { scrollbar-width: thin; scrollbar-color: var(--strokeMd) transparent; }
 ::-webkit-scrollbar { width: 5px; }

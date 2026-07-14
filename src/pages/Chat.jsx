@@ -5,34 +5,31 @@ import { useAuth } from '../context/auth-context'
 import { useToast } from '../context/toast-context'
 import { useBadges } from '../context/badge-context'
 import { unwrap } from '../lib/db'
-import { PhotoBox } from '../components/primitives'
 import ReportModal from '../components/ReportModal'
 
-const gold    = '#A9823F'
-const goldSoft= '#EFE3CC'
-const ink     = '#1C1B19'
-const ink2    = '#6E6A62'
-const ink3    = '#A6A199'
-const stroke  = '#E2DED6'
-const surface = '#FFFFFF'
-const surface2= '#F0EEE9'
-const bg      = '#FBFAF8'
-const green   = '#3F9D6E'
-const red     = '#D24B4B'
-const serif   = "'Cormorant Garamond', serif"
+// ── The Vault × Manufacture — soft ──────────────────────────────────────────
+const bg      = '#F6F6F3'
+const card    = '#FFFFFF'
+const accent  = '#274C6B'
+const ink     = '#16181B'
+const inkSoft = 'rgba(22,24,27,0.55)'
 const sans    = "'Inter', system-ui, sans-serif"
-const mono    = "'Spline Sans Mono', ui-monospace, monospace"
+const serif   = "'Fraunces', serif"
+
+const cardShadow     = '0 8px 30px rgba(22,24,27,0.08)'
+const bubbleShadow   = '0 4px 14px rgba(22,24,27,0.08)'
+const headerShadow   = '0 8px 24px rgba(22,24,27,0.06)'
+const composerShadow = '0 -8px 24px rgba(22,24,27,0.06)'
 
 function MatchesEmpty() {
   return (
     <div style={{
-      marginTop: 40, border: `1px dashed #D4CFC5`, borderRadius: 16,
-      padding: '60px 24px', textAlign: 'center',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+      marginTop: 32, background: card, borderRadius: 22, boxShadow: cardShadow,
+      padding: '64px 24px', textAlign: 'center',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
     }}>
-      <span style={{ fontSize: 40, color: ink3 }}>⌚</span>
-      <span style={{ fontFamily: serif, fontSize: 24, color: ink }}>No messages yet</span>
-      <span style={{ fontFamily: sans, fontSize: 13.5, color: ink3, maxWidth: 320, lineHeight: 1.5 }}>
+      <span style={{ fontFamily: serif, fontSize: 22, color: ink }}>No messages yet</span>
+      <span style={{ fontFamily: sans, fontSize: 13.5, color: inkSoft, maxWidth: 320, lineHeight: 1.5 }}>
         When you match with someone, your conversation will appear here.
       </span>
     </div>
@@ -214,7 +211,7 @@ export default function Chat() {
   }
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: ink3, fontFamily: sans, fontSize: 14 }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: inkSoft, fontFamily: sans, fontSize: 14 }}>
       Loading…
     </div>
   )
@@ -222,7 +219,7 @@ export default function Chat() {
   if (matches.length === 0) {
     return (
       <div style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 26px 40px' }}>
-        <h1 style={{ fontFamily: serif, fontWeight: 600, fontSize: 32, color: ink, margin: '0 0 24px' }}>Messages</h1>
+        <h1 style={{ fontFamily: serif, fontWeight: 600, fontSize: 34, color: ink, margin: 0 }}>Messages</h1>
         <MatchesEmpty />
       </div>
     )
@@ -237,26 +234,30 @@ export default function Chat() {
     }}>
       {/* Conversation list */}
       <div className="chat-list" style={{
-        background: surface, border: `1px solid ${stroke}`, borderRadius: 12, overflow: 'hidden',
+        background: card, borderRadius: 22, boxShadow: cardShadow, overflow: 'hidden',
       }}>
-        <div style={{ padding: '13px 16px', borderBottom: `1px solid ${stroke}`, fontFamily: serif, fontSize: 18, color: ink }}>
+        <div style={{ padding: '16px 18px', fontFamily: serif, fontSize: 18, color: ink }}>
           Messages
         </div>
         {matches.map(c => {
           const active = m && c.matchId === m.matchId
+          const photo = c.listing?.photos?.[0]
           return (
             <button key={c.matchId} onClick={() => selectMatch(c)} style={{
               all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
               display: 'flex', gap: 10, alignItems: 'center', width: '100%',
-              padding: '12px 16px', borderBottom: `1px solid ${stroke}`,
-              background: active ? surface2 : 'transparent',
+              padding: '10px 18px',
+              background: active ? `${accent}12` : 'transparent',
+              transition: 'background 200ms ease',
             }}>
-              <PhotoBox h={38} w={38} r={8} src={c.listing?.photos?.[0]} />
+              <div style={{ width: 38, height: 38, borderRadius: 12, overflow: 'hidden', flexShrink: 0, background: photo ? card : accent }}>
+                {photo && <img src={photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: sans, fontSize: 13.5, fontWeight: 600, color: ink }}>
+                <div style={{ fontFamily: sans, fontSize: 13.5, fontWeight: 500, color: ink }}>
                   {c.profile?.name || 'Unknown'}
                 </div>
-                <div style={{ fontFamily: sans, fontSize: 11, color: ink3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ fontFamily: sans, fontSize: 11.5, color: inkSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {c.listing ? `${c.listing.brand} ${c.listing.model}` : 'Say hello'}
                 </div>
               </div>
@@ -268,57 +269,68 @@ export default function Chat() {
       {/* Thread */}
       {m && (
         <div style={{
-          background: surface, border: `1px solid ${stroke}`, borderRadius: 12,
-          display: 'flex', flexDirection: 'column', height: 'min(72vh, 640px)',
+          background: card, borderRadius: 22, boxShadow: cardShadow,
+          display: 'flex', flexDirection: 'column', height: 'min(72vh, 640px)', overflow: 'hidden',
         }}>
           {/* thread header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: `1px solid ${stroke}` }}>
-            <PhotoBox h={40} w={40} r={8} src={m.listing?.photos?.[0]} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: sans, fontSize: 14.5, fontWeight: 600, color: ink }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px',
+            background: card, boxShadow: headerShadow, position: 'relative', zIndex: 1,
+          }}>
+            <button
+              onClick={() => navigate('/matches')}
+              aria-label="Back to matches"
+              style={{ all: 'unset', cursor: 'pointer', fontSize: 18, color: ink, lineHeight: 1, padding: 4 }}
+            >←</button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: serif, fontSize: 20, color: ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {m.profile?.name || 'Unknown'}
-                <span style={{ color: ink3, fontWeight: 400, fontSize: 12 }}> · {m.profile?.country || '—'}</span>
               </div>
-              <div style={{ fontFamily: sans, fontSize: 11.5, color: ink3 }}>
-                {m.listing ? `${m.listing.model}` : 'Their watch'} ⇄ your {myListing?.model || 'watch'}
+              <div style={{ fontFamily: sans, fontSize: 13, color: inkSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {m.listing?.model || 'Their watch'}
               </div>
             </div>
-            <button onClick={() => setReportOpen(true)} style={{
-              all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 12, color: red,
-            }}>⚑ Report</button>
+            <button
+              onClick={() => setReportOpen(true)}
+              onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }}
+              onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}
+              style={{ all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13, color: inkSoft, flexShrink: 0 }}
+            >Report</button>
           </div>
 
           {/* messages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ textAlign: 'center', fontFamily: mono, fontSize: 9.5, letterSpacing: '.12em', color: ink3 }}>
-              — MATCHED · {timeAgo(m.createdAt).toUpperCase()} —
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 18px', background: bg, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ textAlign: 'center', fontFamily: sans, fontSize: 12, color: inkSoft }}>
+              Matched · {timeAgo(m.createdAt)}
             </div>
             {messages.map(msg => {
               if (msg.is_system) return (
-                <div key={msg.id} style={{ textAlign: 'center', padding: '4px 0' }}>
-                  <span style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: '.1em', color: ink3 }}>{msg.content}</span>
+                <div key={msg.id} style={{ textAlign: 'center', padding: '2px 0' }}>
+                  <span style={{ fontFamily: sans, fontSize: 12, color: inkSoft }}>{msg.content}</span>
                 </div>
               )
               const isMine = msg.sender_id === user.id
               return (
-                <div key={msg.id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+                <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
                   <div style={{
-                    maxWidth: '72%', padding: '10px 14px', borderRadius: 14,
-                    borderBottomRightRadius: isMine ? 4 : 14,
-                    borderBottomLeftRadius:  isMine ? 14 : 4,
-                    background: isMine ? goldSoft : surface2,
-                    border: `1px solid ${isMine ? gold + '40' : stroke}`,
+                    maxWidth: '72%', padding: '10px 16px', borderRadius: 16,
+                    borderBottomRightRadius: isMine ? 4 : 16,
+                    borderBottomLeftRadius:  isMine ? 16 : 4,
+                    background: isMine ? accent : card,
+                    boxShadow: bubbleShadow,
                   }}>
-                    <div style={{ fontFamily: sans, fontSize: 13.5, color: ink, lineHeight: 1.45 }}>{msg.content}</div>
-                    <div style={{ fontFamily: sans, fontSize: 9.5, color: ink3, textAlign: 'right', marginTop: 5 }}>
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <div style={{ fontFamily: sans, fontSize: 14, lineHeight: 1.5, color: isMine ? '#fff' : ink }}>
+                      {msg.content}
                     </div>
+                  </div>
+                  <div style={{ fontFamily: sans, fontSize: 11, color: inkSoft, marginTop: 4, padding: '0 4px' }}>
+                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
               )
             })}
             {messages.length === 0 && (
-              <div style={{ textAlign: 'center', color: ink3, fontFamily: sans, fontSize: 13, marginTop: 20 }}>
+              <div style={{ textAlign: 'center', color: inkSoft, fontFamily: sans, fontSize: 13, marginTop: 20 }}>
                 No messages yet — break the ice.
               </div>
             )}
@@ -326,23 +338,34 @@ export default function Chat() {
           </div>
 
           {/* composer */}
-          <div style={{ display: 'flex', gap: 10, padding: '12px 16px', borderTop: `1px solid ${stroke}`, alignItems: 'center' }}>
+          <div style={{
+            display: 'flex', gap: 10, padding: '14px 18px', alignItems: 'center',
+            background: card, boxShadow: composerShadow, position: 'relative', zIndex: 1,
+          }}>
             <input
               value={text}
               onChange={e => setText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
               placeholder="Message…"
               style={{
-                flex: 1, height: 42, border: `1px solid ${stroke}`, borderRadius: 999,
-                padding: '0 18px', fontFamily: sans, fontSize: 13.5, color: ink,
+                flex: 1, height: 44, border: 'none', borderRadius: 99,
+                padding: '12px 18px', fontFamily: sans, fontSize: 14, color: ink,
                 background: bg, outline: 'none',
               }}
             />
-            <button onClick={handleSend} style={{
-              all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13.5, fontWeight: 600,
-              color: '#fff', background: gold, borderRadius: 999,
-              padding: '0 22px', height: 42, display: 'inline-flex', alignItems: 'center',
-            }}>Send</button>
+            <button
+              onClick={handleSend}
+              disabled={!text.trim()}
+              aria-label="Send message"
+              style={{
+                all: 'unset', cursor: text.trim() ? 'pointer' : 'default', boxSizing: 'border-box',
+                width: 44, height: 44, borderRadius: '50%',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', background: accent, fontSize: 17,
+                opacity: text.trim() ? 1 : 0.4, flexShrink: 0,
+                transition: 'opacity 300ms ease',
+              }}
+            >↑</button>
           </div>
         </div>
       )}
