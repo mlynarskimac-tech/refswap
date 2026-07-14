@@ -66,6 +66,7 @@ button, input, select, textarea { font-family: inherit; }
   .match-cta   { display: none !important; }
   .browse-hero { height: 260px !important; }
   .browse-hero-title { font-size: 32px !important; }
+  .drawer-like-btn { width: 100% !important; }
 }
 
 /* scrollbar */

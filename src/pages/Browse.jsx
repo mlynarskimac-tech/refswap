@@ -6,6 +6,7 @@ import { useBadges } from '../context/badge-context'
 import { useToast } from '../context/toast-context'
 import { unwrap } from '../lib/db'
 import { TIERS, GEO_LABELS } from '../components/primitives'
+import ReportModal from '../components/ReportModal'
 
 // ── The Vault × Manufacture — soft ──────────────────────────────────────────
 const bg      = '#F6F6F3'
@@ -63,30 +64,34 @@ function Dropdown({ label, value, setValue, options }) {
 }
 
 // ── WatchDrawer ────────────────────────────────────────────────────────────
-function WatchDrawer({ listing, liked, onLike, onClose }) {
+function WatchDrawer({ listing, liked, onLike, onClose, onReport }) {
+  const [selectedIndex, setSelectedIndex] = useState(0)
+
   if (!listing) return null
-  const tier = TIERS[listing.price_tier] || {}
   const geoLabel = GEO_LABELS[listing.geo_scope] || listing.geo_scope || '—'
   const country = listing.profiles?.country || '—'
-  const mainPhoto = listing.photos?.[0]
+  const photos = listing.photos || []
+  const mainPhoto = photos[selectedIndex]
+  const thumbs = photos.slice(0, 5)
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'flex', justifyContent: 'flex-end' }}>
       <div onClick={onClose} style={{
         position: 'absolute', inset: 0,
-        background: 'rgba(22,24,27,.45)', animation: 'fadeIn .3s ease',
+        background: 'rgba(22,24,27,0.35)', backdropFilter: 'blur(6px)',
+        animation: 'fadeIn .3s ease',
       }} />
       <div style={{
         position: 'relative', width: 'min(440px, 92vw)', height: '100%',
-        background: bg, borderRadius: '28px 0 0 28px',
-        boxShadow: '-24px 0 60px rgba(22,24,27,.18)',
-        overflowY: 'auto', animation: 'slideIn .35s cubic-bezier(.2,.8,.2,1)',
+        background: card, borderRadius: '28px 0 0 28px',
+        boxShadow: '0 24px 80px rgba(22,24,27,0.18)',
+        overflowY: 'auto', animation: 'slideIn .35s ease',
       }}>
         {/* sticky sub-bar */}
         <div style={{
           position: 'sticky', top: 0, display: 'flex', justifyContent: 'space-between',
           alignItems: 'center', padding: '18px 22px', zIndex: 1,
-          background: 'rgba(246,246,243,.85)', backdropFilter: 'blur(10px)',
+          background: 'rgba(255,255,255,.85)', backdropFilter: 'blur(10px)',
         }}>
           <span style={{ fontFamily: sans, fontSize: 11, letterSpacing: '.1em', color: inkSoft, textTransform: 'uppercase' }}>
             Listing detail
@@ -94,101 +99,104 @@ function WatchDrawer({ listing, liked, onLike, onClose }) {
           <button onClick={onClose} style={{ all: 'unset', cursor: 'pointer', fontSize: 18, color: ink, lineHeight: 1 }}>✕</button>
         </div>
 
-        <div style={{ padding: '4px 22px 22px' }}>
-          <div style={{
-            position: 'relative', height: 280, borderRadius: 22, overflow: 'hidden',
-            background: mainPhoto ? card : accent, boxShadow: cardShadow,
-          }}>
+        <div style={{ padding: '4px 22px 26px' }}>
+          {/* photo gallery */}
+          <div style={{ height: 280, borderRadius: 16, overflow: 'hidden', background: mainPhoto ? card : accent }}>
             {mainPhoto && <img src={mainPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            {[0,1,2,3].map(i => (
-              <div key={i} style={{
-                width: 56, height: 56, borderRadius: 14, overflow: 'hidden', background: card,
-                boxShadow: '0 4px 14px rgba(22,24,27,.08)',
-              }}>
-                {listing.photos?.[i+1] && (
-                  <img src={listing.photos[i+1]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 22, gap: 12 }}>
-            <div>
-              <div style={{ fontFamily: sans, fontSize: 11, letterSpacing: '.08em', color: inkSoft, textTransform: 'uppercase' }}>
-                {listing.brand}
-              </div>
-              <div style={{ fontFamily: serif, fontSize: 28, fontWeight: 600, color: ink, marginTop: 4 }}>
-                {listing.model}
-              </div>
+          {thumbs.length > 1 && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              {thumbs.map((src, i) => {
+                const active = i === selectedIndex
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedIndex(i)}
+                    onMouseEnter={e => { if (!active) e.currentTarget.style.opacity = '1' }}
+                    onMouseLeave={e => { if (!active) e.currentTarget.style.opacity = '0.7' }}
+                    style={{
+                      all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
+                      width: 64, height: 64, borderRadius: 16, overflow: 'hidden', background: bg,
+                      outline: active ? `2px solid ${accent}` : 'none', outlineOffset: -2,
+                      opacity: active ? 1 : 0.7,
+                      transition: 'opacity 200ms ease',
+                    }}
+                  >
+                    <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  </button>
+                )
+              })}
             </div>
-            <span style={{
-              fontFamily: sans, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-              color: accent, background: `${accent}0F`, borderRadius: 99, padding: '7px 13px',
-            }}>{tier.label || listing.price_tier}</span>
+          )}
+
+          {/* title block */}
+          <div style={{ marginTop: 22 }}>
+            <div style={{ fontFamily: sans, fontSize: 11, letterSpacing: '.12em', color: accent, textTransform: 'uppercase' }}>
+              {listing.brand}
+            </div>
+            <div style={{ fontFamily: serif, fontSize: 28, fontWeight: 600, color: ink, marginTop: 4 }}>
+              {listing.model} {listing.reference}
+            </div>
           </div>
 
-          {/* 2-col detail grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px 20px', marginTop: 22 }}>
-            {[
-              ['Reference',       listing.reference || '—'],
-              ['Price tier',      tier.range || '—'],
-              ['Location',        country],
-              ['Geographic scope',geoLabel],
-              ['Open to top-up',  listing.open_to_topup ? 'Yes ⇅' : 'Straight swap'],
-            ].map(([k, v]) => (
-              <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                <span style={{ fontFamily: sans, fontSize: 10.5, letterSpacing: '.06em', color: inkSoft, textTransform: 'uppercase' }}>{k}</span>
-                <span style={{ fontFamily: sans, fontSize: 14.5, color: ink, fontWeight: 500 }}>{v}</span>
-              </div>
-            ))}
+          {/* meta line */}
+          <div style={{ marginTop: 10 }}>
+            <TierMeta priceTier={listing.price_tier} />
           </div>
+          <div style={{ marginTop: 6, fontFamily: sans, fontSize: 13, color: inkSoft }}>
+            {country} · {geoLabel}
+          </div>
+
+          {/* top-up */}
+          {listing.open_to_topup && (
+            <span style={{
+              display: 'inline-block', marginTop: 12,
+              fontFamily: sans, fontSize: 12, color: ink,
+              border: '1px solid rgba(22,24,27,.15)', borderRadius: 99, padding: '5px 14px',
+            }}>Open to top-up</span>
+          )}
 
           <div style={{ height: 1, background: 'rgba(22,24,27,.08)', margin: '24px 0' }} />
 
-          <span style={{ fontFamily: sans, fontSize: 10.5, letterSpacing: '.06em', color: inkSoft, textTransform: 'uppercase' }}>
-            Wants in return
-          </span>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+          {/* wanted references */}
+          <div style={{ fontFamily: serif, fontSize: 18, fontWeight: 600, color: ink }}>
+            Looking for
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
             {(listing.wanted_references || []).map(t => (
-              <span key={t} style={{
-                fontFamily: sans, fontSize: 12.5, color: ink,
-                background: card, boxShadow: '0 4px 14px rgba(22,24,27,.06)',
-                borderRadius: 99, padding: '7px 14px',
-              }}>{t}</span>
+              <div key={t} style={{
+                fontFamily: sans, fontSize: 14, color: ink,
+                background: bg, borderRadius: 16, padding: '12px 16px',
+              }}>{t}</div>
             ))}
             {(!listing.wanted_references?.length) && (
-              <span style={{ fontFamily: sans, fontSize: 12.5, color: inkSoft }}>Not specified</span>
+              <div style={{ fontFamily: sans, fontSize: 13, color: inkSoft }}>Not specified</div>
             )}
           </div>
 
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            background: card, borderRadius: 16, padding: '14px 16px', marginTop: 24,
-            boxShadow: '0 4px 14px rgba(22,24,27,.06)',
-          }}>
-            <span style={{
-              width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-              background: `${accent}14`, color: accent,
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
-            }}>◍</span>
-            <span style={{ fontFamily: sans, fontSize: 12.5, color: inkSoft, lineHeight: 1.5 }}>
-              Owner stays anonymous until you both like each other's watch.
-            </span>
+          {/* actions */}
+          <div style={{ marginTop: 26, textAlign: 'center' }}>
+            <button onClick={() => onLike(listing.id)} className="drawer-like-btn" style={{
+              all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: sans, fontSize: 15, fontWeight: 500,
+              padding: '14px 28px', borderRadius: 99,
+              color: liked ? accent : '#fff',
+              background: liked ? 'rgba(39,76,107,0.12)' : accent,
+              transition: 'all 300ms ease',
+            }}>
+              {liked ? '♥  Liked — waiting for a match' : '♡  Like this watch'}
+            </button>
+            <button
+              onClick={onReport}
+              onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }}
+              onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}
+              style={{
+                all: 'unset', cursor: 'pointer', display: 'block',
+                margin: '14px auto 0', fontFamily: sans, fontSize: 13, color: inkSoft,
+              }}
+            >Report this listing</button>
           </div>
-
-          <button onClick={() => onLike(listing.id)} style={{
-            all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
-            marginTop: 20, width: '100%', textAlign: 'center',
-            fontFamily: sans, fontSize: 15, fontWeight: 600,
-            padding: '16px 0', borderRadius: 99,
-            color: liked ? accent : '#fff',
-            background: liked ? `${accent}16` : accent,
-            transition: 'all 300ms ease',
-          }}>
-            {liked ? '♥  Liked — waiting for them' : '♡  Like this watch'}
-          </button>
         </div>
       </div>
     </div>
@@ -338,6 +346,7 @@ export default function Browse() {
   const [matchedIds, setMatchedIds] = useState(new Set())
   const [loading,    setLoading]    = useState(true)
   const [drawer,     setDrawer]     = useState(null)
+  const [reportOpen, setReportOpen] = useState(false)
 
   const [tier,     setTier]     = useState('Any tier')
   const [geo,      setGeo]      = useState('Anywhere')
@@ -448,6 +457,22 @@ export default function Browse() {
     }
   }
 
+  async function handleSubmitReport(reason) {
+    if (!drawer) return false
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: user.id,
+      reported_listing_id: drawer.id,
+      reason,
+    })
+    if (error) {
+      console.error('[Browse: submit report]', error)
+      flash("Couldn't submit report — try again.")
+      return false
+    }
+    flash("Thanks, we'll review within 48h.")
+    return true
+  }
+
   const list = listings.filter(l =>
     (tier === 'Any tier' || (TIERS[l.price_tier]?.label === tier)) &&
     (geo === 'Anywhere'  || (l.profiles?.country?.toUpperCase() === geo)) &&
@@ -530,10 +555,18 @@ export default function Browse() {
       )}
 
       <WatchDrawer
+        key={drawer?.id}
         listing={drawer}
         liked={drawer ? likedIds.has(drawer.id) : false}
         onLike={handleLike}
         onClose={() => setDrawer(null)}
+        onReport={() => setReportOpen(true)}
+      />
+
+      <ReportModal
+        isOpen={reportOpen}
+        onClose={() => setReportOpen(false)}
+        onSubmit={handleSubmitReport}
       />
     </div>
   )
