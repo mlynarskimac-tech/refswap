@@ -1,4 +1,5 @@
-// Shared visual primitives — PhotoBox, TierBadge, Flag, AnonToken
+// Shared visual primitives — PhotoBox, TierBadge, Flag, AnonToken, PhotoGallery
+import { useState } from 'react'
 
 const P = {
   bg:       '#FBFAF8',
@@ -110,5 +111,59 @@ export function AnonToken({ size = 26 }) {
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       color: P.ink3, fontSize: size * 0.5, flexShrink: 0,
     }}>◍</span>
+  )
+}
+
+// ── PhotoGallery — Vault soft ────────────────────────────────────────────────
+// Main photo + thumbnail row with click-to-select. Used by Browse's listing
+// drawer and MyWatch so both share the same gallery behavior.
+// Pass `key={listing.id}` (or similar) at the call site to reset the selected
+// thumbnail when the underlying listing changes — same convention Browse's
+// drawer already used before this was extracted.
+const VAULT = { accent: '#274C6B', card: '#FFFFFF', bg: '#F6F6F3' }
+
+export function PhotoGallery({ photos = [], mainHeight = 280, mainHeightMobile, thumbSize = 64, radius = 16 }) {
+  const [selectedIndex, setSelectedIndex] = useState(0)
+
+  const mainPhoto = photos[selectedIndex]
+
+  return (
+    <div>
+      <div
+        className="photo-gallery-main"
+        style={{
+          '--gallery-h': `${mainHeight}px`,
+          ...(mainHeightMobile ? { '--gallery-h-mobile': `${mainHeightMobile}px` } : {}),
+          borderRadius: radius, overflow: 'hidden',
+          background: mainPhoto ? VAULT.card : VAULT.accent,
+        }}
+      >
+        {mainPhoto && <img src={mainPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+      </div>
+      {photos.length > 1 && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          {photos.map((src, i) => {
+            const active = i === selectedIndex
+            return (
+              <button
+                key={i}
+                onClick={() => setSelectedIndex(i)}
+                onMouseEnter={e => { if (!active) e.currentTarget.style.opacity = '1' }}
+                onMouseLeave={e => { if (!active) e.currentTarget.style.opacity = '0.7' }}
+                style={{
+                  all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
+                  width: thumbSize, height: thumbSize, borderRadius: radius, overflow: 'hidden', background: VAULT.bg,
+                  outline: active ? `2px solid ${VAULT.accent}` : 'none', outlineOffset: -2,
+                  opacity: active ? 1 : 0.7,
+                  transition: 'opacity 200ms ease',
+                }}
+              >
+                <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }

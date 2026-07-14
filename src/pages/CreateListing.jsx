@@ -4,19 +4,24 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
 import { useToast } from '../context/toast-context'
 import { unwrap } from '../lib/db'
-import { PhotoBox, TIERS } from '../components/primitives'
+import { TIERS } from '../components/primitives'
 
-const gold    = '#A9823F'
-const ink     = '#1C1B19'
-const ink2    = '#6E6A62'
-const ink3    = '#A6A199'
-const stroke  = '#E2DED6'
-const strokeMd= '#D4CFC5'
-const surface = '#FFFFFF'
-const bg      = '#FBFAF8'
+// ── The Vault × Manufacture — soft ──────────────────────────────────────────
+const bg      = '#F6F6F3'
+const card    = '#FFFFFF'
+const accent  = '#274C6B'
+const accentHover = '#1E3C56'
+const ink     = '#16181B'
+const inkSoft = 'rgba(22,24,27,0.55)'
 const sans    = "'Inter', system-ui, sans-serif"
-const serif   = "'Cormorant Garamond', serif"
-const mono    = "'Spline Sans Mono', ui-monospace, monospace"
+const serif   = "'Fraunces', serif"
+const red     = '#C0392B'
+
+const cardShadow  = '0 8px 30px rgba(22,24,27,0.08)'
+const pillShadow  = '0 4px 16px rgba(22,24,27,0.08)'
+
+function focusOn(e)  { e.target.style.outline = `2px solid ${accent}`; e.target.style.outlineOffset = '0' }
+function focusOff(e) { e.target.style.outline = 'none' }
 
 const STEPS = ['Your watch', 'Photos', 'Price tier', 'Scope', 'Top-up', 'Wishlist']
 
@@ -26,7 +31,7 @@ const GEO_OPTIONS = [
   { label: 'Worldwide',  value: 'global' },
 ]
 
-// ── Image sanitization ───────────────────────────────────────────────────────
+// ── Image sanitization (unchanged) ───────────────────────────────────────────
 const MAX_IMAGE_DIMENSION = 1600
 
 function loadImageElement(file) {
@@ -75,8 +80,8 @@ function randomFileName(ext) {
 // ── Sub-controls ────────────────────────────────────────────────────────────
 function Field({ label, children }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-      <span style={{ fontFamily: sans, fontSize: 13, color: ink2, fontWeight: 500 }}>{label}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span style={{ fontFamily: sans, fontSize: 13, color: inkSoft }}>{label}</span>
       {children}
     </div>
   )
@@ -85,10 +90,12 @@ function Field({ label, children }) {
 function TextInput({ value, onChange, placeholder }) {
   return (
     <input value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+      onFocus={focusOn} onBlur={focusOff}
       style={{
-        height: 46, border: `1px solid ${stroke}`, borderRadius: 10,
-        padding: '0 16px', fontFamily: sans, fontSize: 15, color: ink,
-        background: bg, outline: 'none', maxWidth: 420,
+        boxSizing: 'border-box', width: '100%', maxWidth: 420,
+        background: bg, border: 'none', borderRadius: 16,
+        padding: '12px 16px', fontFamily: sans, fontSize: 14, color: ink,
+        outline: 'none',
       }}
     />
   )
@@ -114,35 +121,36 @@ function PhotoStep({ files, setFiles }) {
         onDrop={handleDrop}
         style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          height: 180, gap: 8, cursor: 'pointer',
-          border: `1.5px dashed ${strokeMd}`, borderRadius: 12, background: bg,
+          height: 180, gap: 8, cursor: 'pointer', boxSizing: 'border-box',
+          border: '1px dashed rgba(22,24,27,0.2)', borderRadius: 16, background: bg,
         }}
       >
-        <span style={{ fontSize: 30, color: ink3 }}>⤓</span>
-        <span style={{ fontFamily: sans, fontSize: 14, color: ink2 }}>Drag &amp; drop photos</span>
-        <span style={{ fontFamily: sans, fontSize: 11.5, color: ink3 }}>or click to add · up to 8</span>
+        <span style={{ fontSize: 26, color: inkSoft }}>⤓</span>
+        <span style={{ fontFamily: sans, fontSize: 14, color: inkSoft }}>Drag &amp; drop photos</span>
+        <span style={{ fontFamily: sans, fontSize: 12, color: inkSoft }}>or click to add · up to 8</span>
         <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handlePick} />
       </label>
       {files.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
           {files.map((f, i) => {
             const url = typeof f === 'string' ? f : URL.createObjectURL(f)
             return (
               <div key={i} style={{ position: 'relative' }}>
-                <img src={url} alt="" style={{ width: 62, height: 62, objectFit: 'cover', borderRadius: 8, border: `1px solid ${stroke}` }} />
+                <img src={url} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 16, display: 'block' }} />
                 <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} style={{
                   all: 'unset', cursor: 'pointer', position: 'absolute', top: -6, right: -6,
-                  width: 18, height: 18, borderRadius: '50%', background: ink3, color: '#fff',
+                  width: 20, height: 20, borderRadius: '50%', background: ink, color: '#fff',
                   fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: pillShadow,
                 }}>✕</button>
               </div>
             )
           })}
           {files.length < 8 && (
             <label style={{
-              width: 62, height: 62, border: `1px dashed ${strokeMd}`, borderRadius: 8,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: ink3, fontSize: 20, cursor: 'pointer',
+              width: 80, height: 80, border: '1px dashed rgba(22,24,27,0.2)', borderRadius: 16,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box',
+              color: inkSoft, fontSize: 20, cursor: 'pointer',
             }}>
               +
               <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handlePick} />
@@ -171,27 +179,36 @@ function ReferenceSearch({ catalog, query, onQueryChange, onSelect, excludeIds, 
       <TextInput value={query} onChange={onQueryChange} placeholder="Search: brand, model or reference…" />
       {q && (
         results.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+          <div style={{
+            display: 'flex', flexDirection: 'column', marginTop: 10, maxWidth: 420,
+            background: card, borderRadius: 16, boxShadow: cardShadow, overflow: 'hidden', padding: 4,
+          }}>
             {results.map(r => (
-              <button key={r.id} onClick={() => onSelect(r)} style={{
-                all: 'unset', cursor: 'pointer', boxSizing: 'border-box', width: '100%', maxWidth: 420,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                border: `1px solid ${stroke}`, borderRadius: 10, padding: '10px 14px', background: bg,
-              }}>
+              <button
+                key={r.id}
+                onClick={() => onSelect(r)}
+                onMouseEnter={e => { e.currentTarget.style.background = bg }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                style={{
+                  all: 'unset', cursor: 'pointer', boxSizing: 'border-box', width: '100%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  borderRadius: 12, padding: '12px 16px', transition: 'background 200ms ease',
+                }}
+              >
                 <div>
-                  <div style={{ fontFamily: sans, fontSize: 14, fontWeight: 600, color: ink }}>
+                  <div style={{ fontFamily: sans, fontSize: 14, fontWeight: 500, color: ink }}>
                     {r.brand} {r.model}
                   </div>
                   {r.variant && (
-                    <div style={{ fontFamily: sans, fontSize: 12, color: ink3, marginTop: 2 }}>{r.variant}</div>
+                    <div style={{ fontFamily: sans, fontSize: 12, color: inkSoft, marginTop: 2 }}>{r.variant}</div>
                   )}
                 </div>
-                <span style={{ fontFamily: mono, fontSize: 12.5, color: ink2, marginLeft: 12 }}>{r.reference}</span>
+                <span style={{ fontFamily: sans, fontSize: 12.5, color: inkSoft, marginLeft: 12 }}>{r.reference}</span>
               </button>
             ))}
           </div>
         ) : noMatches && (
-          <div style={{ fontFamily: sans, fontSize: 13, color: ink3, marginTop: 10 }}>
+          <div style={{ fontFamily: sans, fontSize: 13, color: inkSoft, marginTop: 10 }}>
             {noMatchesLabel}
           </div>
         )
@@ -206,23 +223,27 @@ function WatchStep({ catalog, query, onQueryChange, selectedRef, onSelect, onCle
       {!manualMode && (
         selectedRef ? (
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            border: `1px solid ${gold}`, borderRadius: 10, padding: '14px 18px', background: `${gold}0A`,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10,
+            borderRadius: 16, padding: '14px 18px', background: bg, maxWidth: 420, boxSizing: 'border-box',
           }}>
             <div>
-              <div style={{ fontFamily: sans, fontSize: 15, fontWeight: 600, color: ink }}>
+              <div style={{ fontFamily: sans, fontSize: 15, fontWeight: 500, color: ink }}>
                 {selectedRef.brand} {selectedRef.model}
               </div>
               {selectedRef.variant && (
-                <div style={{ fontFamily: sans, fontSize: 12.5, color: ink2, marginTop: 2 }}>{selectedRef.variant}</div>
+                <div style={{ fontFamily: sans, fontSize: 12.5, color: inkSoft, marginTop: 2 }}>{selectedRef.variant}</div>
               )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <span style={{ fontFamily: mono, fontSize: 13, color: ink2 }}>{selectedRef.reference}</span>
-              <button onClick={onClear} style={{
-                all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 12.5, fontWeight: 600,
-                color: ink2, border: `1px solid ${stroke}`, borderRadius: 8, padding: '7px 12px',
-              }}>Change</button>
+              <span style={{ fontFamily: sans, fontSize: 13, color: inkSoft }}>{selectedRef.reference}</span>
+              <button
+                onClick={onClear}
+                onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }}
+                onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}
+                style={{
+                  all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13, color: inkSoft,
+                }}
+              >Change</button>
             </div>
           </div>
         ) : (
@@ -237,9 +258,12 @@ function WatchStep({ catalog, query, onQueryChange, selectedRef, onSelect, onCle
       )}
 
       {!manualMode && (
-        <button onClick={onToggleManual} style={{
-          all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13, color: gold, width: 'fit-content',
-        }}>Can't find your watch? Enter manually</button>
+        <button
+          onClick={onToggleManual}
+          onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }}
+          onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}
+          style={{ all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13, color: accent, width: 'fit-content' }}
+        >Can't find your watch? Enter manually</button>
       )}
 
       {manualMode && (
@@ -247,12 +271,15 @@ function WatchStep({ catalog, query, onQueryChange, selectedRef, onSelect, onCle
           <Field label="Brand"><TextInput value={data.brand} onChange={v => set('brand', v)} placeholder="e.g. Rolex" /></Field>
           <Field label="Model"><TextInput value={data.model} onChange={v => set('model', v)} placeholder="e.g. Submariner Date" /></Field>
           <Field label="Reference number"><TextInput value={data.ref} onChange={v => set('ref', v)} placeholder="e.g. 126610LN" /></Field>
-          <span style={{ fontFamily: sans, fontSize: 12, color: ink3 }}>
+          <span style={{ fontFamily: sans, fontSize: 12, color: inkSoft }}>
             Manual entries are not included in automatic matching.
           </span>
-          <button onClick={onToggleManual} style={{
-            all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13, color: gold, width: 'fit-content',
-          }}>Search catalog instead</button>
+          <button
+            onClick={onToggleManual}
+            onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline' }}
+            onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none' }}
+            style={{ all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13, color: accent, width: 'fit-content' }}
+          >Search catalog instead</button>
         </div>
       )}
     </div>
@@ -267,14 +294,15 @@ function TierStep({ value, onChange }) {
         return (
           <button key={k} onClick={() => onChange(k)} style={{
             all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
-            border: `1px solid ${sel ? gold : stroke}`, borderRadius: 12,
-            padding: '18px 16px', background: sel ? `${gold}10` : bg,
+            borderRadius: 16, padding: '18px 16px',
+            background: sel ? `${accent}14` : bg,
             display: 'flex', flexDirection: 'column', gap: 6,
+            transition: 'background 300ms ease',
           }}>
-            <span style={{ fontFamily: serif, fontSize: 20, fontWeight: 600, color: sel ? gold : ink }}>
+            <span style={{ fontFamily: serif, fontSize: 19, color: sel ? accent : ink }}>
               {t.fullLabel}
             </span>
-            <span style={{ fontFamily: mono, fontSize: 12.5, color: ink2 }}>{t.range}</span>
+            <span style={{ fontFamily: sans, fontSize: 12.5, color: inkSoft }}>{t.range}</span>
           </button>
         )
       })}
@@ -285,7 +313,7 @@ function TierStep({ value, onChange }) {
 function ChoiceRow({ value, onChange, options, hint }) {
   return (
     <div>
-      {hint && <div style={{ fontFamily: sans, fontSize: 13.5, color: ink2, marginBottom: 14 }}>{hint}</div>}
+      {hint && <div style={{ fontFamily: sans, fontSize: 13.5, color: inkSoft, marginBottom: 14 }}>{hint}</div>}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         {options.map(o => {
           const sel = value === (o.value ?? o)
@@ -294,10 +322,11 @@ function ChoiceRow({ value, onChange, options, hint }) {
           return (
             <button key={val} onClick={() => onChange(val)} style={{
               all: 'unset', cursor: 'pointer',
-              fontFamily: sans, fontSize: 14, padding: '12px 22px', borderRadius: 10,
-              border: `1px solid ${sel ? gold : stroke}`,
-              color: sel ? gold : ink,
-              background: sel ? `${gold}10` : bg,
+              fontFamily: sans, fontSize: 14, padding: '12px 22px', borderRadius: 99,
+              color: sel ? '#fff' : ink,
+              background: sel ? accent : card,
+              boxShadow: sel ? `0 8px 22px ${accent}40` : pillShadow,
+              transition: 'all 300ms ease',
             }}>{label}</button>
           )
         })}
@@ -317,7 +346,7 @@ function WishlistStep({ catalog, wants, setWants }) {
 
   return (
     <div>
-      <div style={{ fontFamily: sans, fontSize: 13.5, color: ink2, marginBottom: 14 }}>
+      <div style={{ fontFamily: sans, fontSize: 13.5, color: inkSoft, marginBottom: 14 }}>
         Which references would you swap this for?
       </div>
       <ReferenceSearch
@@ -332,13 +361,13 @@ function WishlistStep({ catalog, wants, setWants }) {
         {wants.map(w => (
           <span key={w.id} style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
-            fontFamily: sans, fontSize: 13, color: ink2,
-            border: `1px solid ${stroke}`, borderRadius: 999, padding: '7px 8px 7px 14px',
+            fontFamily: sans, fontSize: 13, color: ink,
+            background: bg, borderRadius: 999, padding: '7px 8px 7px 14px',
           }}>
             {w.brand} {w.model}
-            <span style={{ fontFamily: mono, fontSize: 11.5, color: ink3 }}>{w.reference}</span>
+            <span style={{ fontFamily: sans, fontSize: 11.5, color: inkSoft }}>{w.reference}</span>
             <button onClick={() => removeRef(w.id)} style={{
-              all: 'unset', cursor: 'pointer', color: ink3, fontSize: 14,
+              all: 'unset', cursor: 'pointer', color: inkSoft, fontSize: 14,
             }}>✕</button>
           </span>
         ))}
@@ -460,110 +489,127 @@ export default function CreateListing() {
   function back() { step > 0 ? setStep(step - 1) : navigate('/my-watch') }
 
   return (
-    <div style={{ maxWidth: 760, margin: '0 auto', padding: '26px 26px 40px' }}>
-      {/* page head */}
-      <div style={{ marginBottom: 4 }}>
-        <h1 style={{ margin: 0, fontFamily: serif, fontWeight: 600, fontSize: 32, color: ink, lineHeight: 1 }}>
-          Create a listing
-        </h1>
-        <span style={{ fontFamily: sans, fontSize: 13, color: ink3 }}>
-          List one watch, plus the references you'd swap it for.
-        </span>
-      </div>
-
-      {/* stepper */}
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 0', margin: '22px 0 28px' }}>
-        {STEPS.map((s, i) => (
-          <span key={s} style={{ display: 'inline-flex', alignItems: 'center' }}>
-            <button onClick={() => setStep(i)} style={{
-              all: 'unset', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7,
-            }}>
-              <span style={{
-                width: 24, height: 24, borderRadius: '50%',
-                fontFamily: sans, fontSize: 11.5,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                border: `1px solid ${i <= step ? gold : strokeMd}`,
-                background: i === step ? gold : i < step ? `${gold}18` : 'transparent',
-                color: i === step ? '#fff' : i < step ? gold : ink3,
-              }}>{i < step ? '✓' : i + 1}</span>
-              <span style={{ fontFamily: sans, fontSize: 11.5, color: i <= step ? ink2 : ink3 }}>{s}</span>
-            </button>
-            {i < STEPS.length - 1 && (
-              <span style={{ width: 16, height: 1, background: stroke, margin: '0 7px' }} />
-            )}
+    <div style={{ minHeight: '100%', background: bg, padding: '26px 26px 40px' }}>
+      <div style={{
+        maxWidth: 640, margin: '0 auto',
+        background: card, borderRadius: 22, padding: 32, boxSizing: 'border-box',
+        boxShadow: cardShadow,
+      }}>
+        {/* page head */}
+        <div>
+          <h1 style={{ margin: 0, fontFamily: serif, fontWeight: 500, fontSize: 28, color: ink }}>
+            Create a listing
+          </h1>
+          <span style={{ fontFamily: sans, fontSize: 14, color: inkSoft }}>
+            List one watch, plus the references you'd swap it for.
           </span>
-        ))}
-      </div>
-
-      {/* card */}
-      <div style={{ background: surface, border: `1px solid ${stroke}`, borderRadius: 14, padding: 26, minHeight: 280 }}>
-        <div style={{ fontFamily: mono, fontSize: 10.5, letterSpacing: '.1em', color: ink3, textTransform: 'uppercase', marginBottom: 16 }}>
-          Step {step + 1} · {STEPS[step]}
         </div>
 
-        {step === 0 && (
-          <WatchStep
-            catalog={catalog}
-            query={query} onQueryChange={setQuery}
-            selectedRef={selectedRef} onSelect={selectRef} onClear={clearRef}
-            manualMode={manualMode} onToggleManual={toggleManual}
-            data={data} set={set}
-          />
-        )}
-        {step === 1 && <PhotoStep files={photos} setFiles={setPhotos} />}
-        {step === 2 && (
-          selectedRef ? (
-            <div style={{ fontFamily: sans, fontSize: 14, color: ink2 }}>
-              Price tier is set automatically from the catalog:
-              <div style={{ marginTop: 10 }}>
+        {/* stepper */}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px 0', margin: '24px 0 4px' }}>
+          {STEPS.map((s, i) => (
+            <span key={s} style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <button onClick={() => setStep(i)} style={{
+                all: 'unset', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7,
+              }}>
                 <span style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  fontFamily: serif, fontSize: 18, fontWeight: 600, color: gold,
-                  border: `1px solid ${gold}`, borderRadius: 10, padding: '10px 18px', background: `${gold}10`,
-                }}>
-                  {TIERS[selectedRef.price_tier]?.fullLabel ?? selectedRef.price_tier}
-                </span>
+                  width: 24, height: 24, borderRadius: '50%',
+                  fontFamily: sans, fontSize: 11.5,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  background: i === step ? accent : i < step ? `${accent}18` : bg,
+                  color: i === step ? '#fff' : i < step ? accent : inkSoft,
+                  transition: 'all 300ms ease',
+                }}>{i < step ? '✓' : i + 1}</span>
+                <span style={{ fontFamily: sans, fontSize: 11.5, color: i <= step ? ink : inkSoft }}>{s}</span>
+              </button>
+              {i < STEPS.length - 1 && (
+                <span style={{ width: 16, height: 1, background: 'rgba(22,24,27,0.12)', margin: '0 7px' }} />
+              )}
+            </span>
+          ))}
+        </div>
+
+        {/* step content */}
+        <div style={{ marginTop: 22 }}>
+          <div style={{ fontFamily: serif, fontSize: 18, color: ink, marginBottom: 16 }}>
+            {STEPS[step]}
+          </div>
+
+          {step === 0 && (
+            <WatchStep
+              catalog={catalog}
+              query={query} onQueryChange={setQuery}
+              selectedRef={selectedRef} onSelect={selectRef} onClear={clearRef}
+              manualMode={manualMode} onToggleManual={toggleManual}
+              data={data} set={set}
+            />
+          )}
+          {step === 1 && <PhotoStep files={photos} setFiles={setPhotos} />}
+          {step === 2 && (
+            selectedRef ? (
+              <div style={{ fontFamily: sans, fontSize: 14, color: inkSoft }}>
+                Price tier is set automatically from the catalog:
+                <div style={{ marginTop: 10 }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    fontFamily: serif, fontSize: 18, color: accent,
+                    borderRadius: 16, padding: '10px 18px', background: `${accent}14`,
+                  }}>
+                    {TIERS[selectedRef.price_tier]?.fullLabel ?? selectedRef.price_tier}
+                  </span>
+                </div>
               </div>
-            </div>
-          ) : (
-            <TierStep value={data.tier} onChange={v => set('tier', v)} />
-          )
-        )}
-        {step === 3 && <ChoiceRow value={data.scope} onChange={v => set('scope', v)} options={GEO_OPTIONS} />}
-        {step === 4 && (
-          <ChoiceRow
-            value={data.topup ? 'yes' : 'no'}
-            onChange={v => set('topup', v === 'yes')}
-            options={[{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }]}
-            hint="Are you open to a cash top-up to balance the swap?"
-          />
-        )}
-        {step === 5 && <WishlistStep catalog={catalog} wants={data.wants} setWants={v => set('wants', v)} />}
+            ) : (
+              <TierStep value={data.tier} onChange={v => set('tier', v)} />
+            )
+          )}
+          {step === 3 && <ChoiceRow value={data.scope} onChange={v => set('scope', v)} options={GEO_OPTIONS} />}
+          {step === 4 && (
+            <ChoiceRow
+              value={data.topup ? 'yes' : 'no'}
+              onChange={v => set('topup', v === 'yes')}
+              options={[{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }]}
+              hint="Are you open to a cash top-up to balance the swap?"
+            />
+          )}
+          {step === 5 && <WishlistStep catalog={catalog} wants={data.wants} setWants={v => set('wants', v)} />}
 
-        {error && (
-          <div style={{
-            marginTop: 16, padding: '10px 14px', borderRadius: 8,
-            background: 'rgba(210,75,75,.06)', border: '1px solid rgba(210,75,75,.2)',
-            color: '#D24B4B', fontFamily: sans, fontSize: 13,
-          }}>{error}</div>
-        )}
-      </div>
+          {error && (
+            <div style={{
+              marginTop: 16, padding: '10px 14px', borderRadius: 12,
+              background: `${red}14`, color: red, fontFamily: sans, fontSize: 13,
+            }}>{error}</div>
+          )}
+        </div>
 
-      {/* footer */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 22 }}>
-        <button onClick={back} style={{
-          all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13.5,
-          color: ink2, border: `1px solid ${stroke}`, borderRadius: 8, padding: '11px 20px',
-        }}>← Back</button>
-        <button onClick={next} disabled={publishing} style={{
-          all: 'unset', cursor: publishing ? 'default' : 'pointer',
-          fontFamily: sans, fontSize: 13.5, fontWeight: 600,
-          color: '#fff', background: publishing ? ink3 : gold,
-          borderRadius: 8, padding: '11px 24px',
-          transition: 'background .15s',
-        }}>
-          {publishing ? 'Publishing…' : step < STEPS.length - 1 ? 'Continue →' : 'Publish listing'}
-        </button>
+        {/* footer */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 28 }}>
+          <button
+            onClick={back}
+            onMouseEnter={e => { e.currentTarget.style.color = ink }}
+            onMouseLeave={e => { e.currentTarget.style.color = inkSoft }}
+            style={{
+              all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 14, color: inkSoft,
+              transition: 'color 300ms ease',
+            }}
+          >← Back</button>
+          <button
+            onClick={next}
+            disabled={publishing}
+            onMouseEnter={e => { if (!publishing) e.currentTarget.style.background = accentHover }}
+            onMouseLeave={e => { if (!publishing) e.currentTarget.style.background = accent }}
+            style={{
+              all: 'unset', cursor: publishing ? 'default' : 'pointer',
+              fontFamily: sans, fontSize: 15, fontWeight: 500,
+              color: '#fff', background: accent,
+              borderRadius: 99, padding: '14px 28px',
+              opacity: publishing ? 0.4 : 1,
+              transition: 'background 300ms ease, opacity 300ms ease',
+            }}
+          >
+            {publishing ? 'Publishing…' : step < STEPS.length - 1 ? 'Continue →' : 'Publish listing'}
+          </button>
+        </div>
       </div>
     </div>
   )

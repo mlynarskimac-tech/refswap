@@ -5,7 +5,7 @@ import { useAuth } from '../context/auth-context'
 import { useBadges } from '../context/badge-context'
 import { useToast } from '../context/toast-context'
 import { unwrap } from '../lib/db'
-import { TIERS, GEO_LABELS } from '../components/primitives'
+import { TIERS, GEO_LABELS, PhotoGallery } from '../components/primitives'
 import ReportModal from '../components/ReportModal'
 
 // ── The Vault × Manufacture — soft ──────────────────────────────────────────
@@ -65,14 +65,10 @@ function Dropdown({ label, value, setValue, options }) {
 
 // ── WatchDrawer ────────────────────────────────────────────────────────────
 function WatchDrawer({ listing, liked, onLike, onClose, onReport }) {
-  const [selectedIndex, setSelectedIndex] = useState(0)
-
   if (!listing) return null
   const geoLabel = GEO_LABELS[listing.geo_scope] || listing.geo_scope || '—'
   const country = listing.profiles?.country || '—'
   const photos = listing.photos || []
-  const mainPhoto = photos[selectedIndex]
-  const thumbs = photos.slice(0, 5)
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 70, display: 'flex', justifyContent: 'flex-end' }}>
@@ -101,33 +97,7 @@ function WatchDrawer({ listing, liked, onLike, onClose, onReport }) {
 
         <div style={{ padding: '4px 22px 26px' }}>
           {/* photo gallery */}
-          <div style={{ height: 280, borderRadius: 16, overflow: 'hidden', background: mainPhoto ? card : accent }}>
-            {mainPhoto && <img src={mainPhoto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-          </div>
-          {thumbs.length > 1 && (
-            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-              {thumbs.map((src, i) => {
-                const active = i === selectedIndex
-                return (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedIndex(i)}
-                    onMouseEnter={e => { if (!active) e.currentTarget.style.opacity = '1' }}
-                    onMouseLeave={e => { if (!active) e.currentTarget.style.opacity = '0.7' }}
-                    style={{
-                      all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
-                      width: 64, height: 64, borderRadius: 16, overflow: 'hidden', background: bg,
-                      outline: active ? `2px solid ${accent}` : 'none', outlineOffset: -2,
-                      opacity: active ? 1 : 0.7,
-                      transition: 'opacity 200ms ease',
-                    }}
-                  >
-                    <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                  </button>
-                )
-              })}
-            </div>
-          )}
+          <PhotoGallery photos={photos} mainHeight={280} />
 
           {/* title block */}
           <div style={{ marginTop: 22 }}>

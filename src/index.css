@@ -75,6 +75,15 @@ button, input, select, textarea { font-family: inherit; }
   border-color: transparent;
 }
 
+.photo-gallery-main {
+  height: var(--gallery-h, 280px);
+}
+@media (max-width: 560px) {
+  .photo-gallery-main {
+    height: var(--gallery-h-mobile, var(--gallery-h, 280px));
+  }
+}
+
 /* scrollbar */
 * { scrollbar-width: thin; scrollbar-color: var(--strokeMd) transparent; }
 ::-webkit-scrollbar { width: 5px; }

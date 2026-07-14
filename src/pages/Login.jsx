@@ -1,10 +1,32 @@
 import { useState } from 'react'
 import { supabase } from '../supabase'
 
-const GOLD   = '#C9A96E'
-const DARK   = '#1C1208'
-const RED    = '#D24B4B'
-const GREEN  = '#3F9D6E'
+// ── The Vault × Manufacture — soft ──────────────────────────────────────────
+const bg      = '#F6F6F3'
+const card    = '#FFFFFF'
+const accent  = '#274C6B'
+const accentHover = '#1E3C56'
+const ink     = '#16181B'
+const inkSoft = 'rgba(22,24,27,0.55)'
+const sans    = "'Inter', system-ui, sans-serif"
+const serif   = "'Fraunces', serif"
+const green   = '#3F9D6E'
+const red     = '#C0392B'
+
+function focusOn(e)  { e.target.style.outline = `2px solid ${accent}`; e.target.style.outlineOffset = '0' }
+function focusOff(e) { e.target.style.outline = 'none' }
+
+const labelStyle = {
+  display: 'block', marginBottom: 6,
+  fontFamily: sans, fontSize: 13, color: inkSoft,
+}
+
+const inputStyle = {
+  width: '100%', boxSizing: 'border-box',
+  background: bg, border: 'none', borderRadius: 16,
+  padding: '12px 16px', fontFamily: sans, fontSize: 14, color: ink,
+  outline: 'none',
+}
 
 export default function Login() {
   const [email,      setEmail]      = useState('')
@@ -38,251 +60,122 @@ export default function Login() {
   }
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,400&display=swap');
-        .rs-input:focus { border-color: ${GOLD} !important; outline: none; }
-      `}</style>
+    <div style={{
+      minHeight: '100vh', background: bg,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      padding: 24,
+    }}>
+      <div style={{ fontFamily: serif, fontSize: 26, color: ink, marginBottom: 22 }}>
+        RefSwap
+      </div>
 
-      {/* Page background */}
       <div style={{
-        minHeight: '100vh',
-        background: '#F8F6F1',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-        fontFamily: "'Inter', system-ui, sans-serif",
+        width: '100%', maxWidth: 480,
+        background: card, borderRadius: 22, padding: 32,
+        boxShadow: '0 8px 30px rgba(22,24,27,0.08)',
+        boxSizing: 'border-box',
       }}>
-        {/* Card */}
-        <div style={{
-          width: '100%',
-          maxWidth: 420,
-          background: '#FFFFFF',
-          border: '0.5px solid #E8E2D9',
-          borderRadius: 20,
-          overflow: 'hidden',
-        }}>
-
-          {/* ── TOP SECTION (dark header) ── */}
-          <div style={{
-            position: 'relative',
-            background: DARK,
-            padding: '2.5rem 2.5rem 2rem',
-            overflow: 'hidden',
-          }}>
-            {/* Decorative circles */}
-            <div style={{
-              position: 'absolute', top: -70, right: -70,
-              width: 220, height: 220, borderRadius: '50%',
-              border: '1px solid rgba(201,169,110,0.2)',
-              pointerEvents: 'none',
-            }} />
-            <div style={{
-              position: 'absolute', top: -20, right: -20,
-              width: 140, height: 140, borderRadius: '50%',
-              border: '1px solid rgba(201,169,110,0.12)',
-              pointerEvents: 'none',
-            }} />
-
-            {/* Logo */}
-            <div style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontSize: 34,
-              lineHeight: 1,
-              position: 'relative',
-            }}>
-              <span style={{ fontWeight: 600, color: '#F5F0E8' }}>Ref</span>
-              <span style={{ fontWeight: 400, fontStyle: 'italic', color: GOLD }}>Swap</span>
-            </div>
-
-            {/* Eyebrow */}
-            <div style={{
-              marginTop: 10,
-              fontSize: 10,
-              letterSpacing: 4,
-              color: 'rgba(201,169,110,0.55)',
-              textTransform: 'uppercase',
-              fontFamily: "'Inter', system-ui, sans-serif",
-            }}>
-              Luxury Watch Exchange
-            </div>
-
-            {/* Decorative line */}
-            <div style={{
-              width: 32, height: 1,
-              background: GOLD,
-              marginTop: 16,
-            }} />
-
-          </div>
-
-          {/* ── BOTTOM SECTION (card body) ── */}
-          <div style={{ padding: '2rem 2.5rem 2.5rem' }}>
-
-            {/* Tab switcher */}
-            <div style={{
-              display: 'flex',
-              background: '#F4F1EB',
-              borderRadius: 10,
-              padding: 3,
-              marginBottom: 24,
-              gap: 3,
-            }}>
-              {[
-                { label: 'Sign in',        val: false },
-                { label: 'Create account', val: true  },
-              ].map(({ label, val }) => {
-                const active = isRegister === val
-                return (
-                  <button
-                    key={label}
-                    onClick={() => { setIsRegister(val); setMessage('') }}
-                    style={{
-                      flex: 1,
-                      padding: '8px 0',
-                      borderRadius: 8,
-                      border: active ? '0.5px solid #E8E2D9' : 'none',
-                      background: active ? '#FFFFFF' : 'transparent',
-                      color: active ? DARK : '#999999',
-                      fontSize: 12,
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      transition: 'all .15s',
-                      fontFamily: "'Inter', system-ui, sans-serif",
-                    }}
-                  >{label}</button>
-                )
-              })}
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-              {/* Email field */}
-              <div>
-                <label style={labelStyle}>Email address</label>
-                <input
-                  type="email"
-                  className="rs-input"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  style={inputStyle}
-                />
-              </div>
-
-              {/* Password field */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                  <span style={labelStyle}>Password</span>
-                  {!isRegister && (
-                    <span style={{
-                      fontSize: 12,
-                      color: GOLD,
-                      cursor: 'pointer',
-                    }}>Forgot password?</span>
-                  )}
-                </div>
-                <input
-                  type="password"
-                  className="rs-input"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  style={inputStyle}
-                />
-              </div>
-
-              {/* Feedback message */}
-              {message && (
-                <div style={{
-                  padding: '10px 14px', borderRadius: 8,
-                  background: isSuccess ? 'rgba(63,157,110,0.08)' : 'rgba(210,75,75,0.08)',
-                  border: `1px solid ${isSuccess ? 'rgba(63,157,110,0.3)' : 'rgba(210,75,75,0.3)'}`,
-                  color: isSuccess ? GREEN : RED,
-                  fontSize: 13, lineHeight: 1.5,
-                }}>
-                  {message}
-                </div>
-              )}
-
-              {/* Submit */}
+        {/* toggle */}
+        <div style={{ display: 'flex', gap: 20, marginBottom: 24 }}>
+          {[
+            { label: 'Sign in',        val: false },
+            { label: 'Create account', val: true  },
+          ].map(({ label, val }) => {
+            const active = isRegister === val
+            return (
               <button
-                type="submit"
-                disabled={loading}
+                key={label}
+                onClick={() => { setIsRegister(val); setMessage('') }}
                 style={{
-                  width: '100%',
-                  background: loading ? '#E8E2D9' : DARK,
-                  color: loading ? '#999' : GOLD,
-                  border: 'none',
-                  borderRadius: 10,
-                  padding: '13px 0',
-                  fontSize: 13,
-                  fontWeight: 500,
-                  letterSpacing: 1,
-                  textTransform: 'uppercase',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'background .15s',
-                  fontFamily: "'Inter', system-ui, sans-serif",
+                  all: 'unset', cursor: 'pointer',
+                  fontFamily: sans, fontSize: 14,
+                  color: active ? accent : inkSoft,
+                  fontWeight: active ? 600 : 400,
+                  transition: 'color 300ms ease',
                 }}
-              >
-                {loading ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
-              </button>
+              >{label}</button>
+            )
+          })}
+        </div>
 
-
-            </form>
-
-            {/* Trust row */}
-            <div style={{
-              borderTop: '0.5px solid #F0EDE7',
-              paddingTop: 16,
-              marginTop: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 10,
-              flexWrap: 'wrap',
-            }}>
-              {['UK · DE · US', '€3k – €50k', 'P2P exchange'].map((item, i, arr) => (
-                <span key={item} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 11, color: '#A09880' }}>{item}</span>
-                  {i < arr.length - 1 && (
-                    <span style={{
-                      width: 4, height: 4, borderRadius: '50%',
-                      background: GOLD, display: 'inline-block', flexShrink: 0,
-                    }} />
-                  )}
-                </span>
-              ))}
-            </div>
-
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div>
+            <label style={labelStyle}>Email address</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              onFocus={focusOn}
+              onBlur={focusOff}
+              required
+              style={inputStyle}
+            />
           </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+              <span style={labelStyle}>Password</span>
+              {!isRegister && (
+                <span style={{ fontFamily: sans, fontSize: 12.5, color: inkSoft, cursor: 'pointer' }}>
+                  Forgot password?
+                </span>
+              )}
+            </div>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onFocus={focusOn}
+              onBlur={focusOff}
+              required
+              style={inputStyle}
+            />
+          </div>
+
+          {message && (
+            <div style={{
+              padding: '10px 14px', borderRadius: 12,
+              background: isSuccess ? `${green}14` : `${red}14`,
+              color: isSuccess ? green : red,
+              fontFamily: sans, fontSize: 13, lineHeight: 1.5,
+            }}>
+              {message}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            onMouseEnter={e => { if (!loading) e.currentTarget.style.background = accentHover }}
+            onMouseLeave={e => { if (!loading) e.currentTarget.style.background = accent }}
+            style={{
+              all: 'unset', cursor: loading ? 'default' : 'pointer', boxSizing: 'border-box',
+              textAlign: 'center', width: '100%',
+              background: accent, color: '#fff',
+              borderRadius: 99, padding: '14px 28px',
+              fontFamily: sans, fontSize: 15, fontWeight: 500,
+              opacity: loading ? 0.4 : 1,
+              transition: 'background 300ms ease, opacity 300ms ease',
+            }}
+          >
+            {loading ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
+          </button>
+        </form>
+
+        <div style={{
+          borderTop: '1px solid rgba(22,24,27,0.08)', paddingTop: 16, marginTop: 22,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap',
+        }}>
+          {['UK · DE · US', '€3k – €50k', 'P2P exchange'].map((item, i, arr) => (
+            <span key={item} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontFamily: sans, fontSize: 11.5, color: inkSoft }}>{item}</span>
+              {i < arr.length - 1 && (
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: accent, flexShrink: 0 }} />
+              )}
+            </span>
+          ))}
         </div>
       </div>
-    </>
+    </div>
   )
-}
-
-const labelStyle = {
-  display: 'block',
-  marginBottom: 6,
-  fontSize: 10,
-  letterSpacing: 2,
-  textTransform: 'uppercase',
-  color: '#A09880',
-  fontFamily: "'Inter', system-ui, sans-serif",
-}
-
-const inputStyle = {
-  width: '100%',
-  border: '1px solid #E8E2D9',
-  borderRadius: 10,
-  padding: '11px 14px',
-  background: '#FDFCFB',
-  fontSize: 14,
-  color: '#1C1208',
-  fontFamily: "'Inter', system-ui, sans-serif",
-  boxSizing: 'border-box',
-  transition: 'border-color .15s',
 }

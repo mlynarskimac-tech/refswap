@@ -2,6 +2,20 @@ import { useState } from 'react'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
 
+// ── The Vault × Manufacture — soft ──────────────────────────────────────────
+const bg      = '#F6F6F3'
+const card    = '#FFFFFF'
+const accent  = '#274C6B'
+const accentHover = '#1E3C56'
+const ink     = '#16181B'
+const inkSoft = 'rgba(22,24,27,0.55)'
+const sans    = "'Inter', system-ui, sans-serif"
+const serif   = "'Fraunces', serif"
+const red     = '#C0392B'
+
+function focusOn(e)  { e.target.style.outline = `2px solid ${accent}`; e.target.style.outlineOffset = '0' }
+function focusOff(e) { e.target.style.outline = 'none' }
+
 const COUNTRIES = [
   { code: 'GB', name: 'United Kingdom' },
   { code: 'DE', name: 'Germany' },
@@ -14,6 +28,18 @@ const COUNTRIES = [
   { code: 'CH', name: 'Switzerland' },
   { code: 'AT', name: 'Austria' },
 ]
+
+const labelStyle = {
+  display: 'block', marginBottom: 6,
+  fontFamily: sans, fontSize: 13, color: inkSoft,
+}
+
+const inputStyle = {
+  width: '100%', boxSizing: 'border-box',
+  background: bg, border: 'none', borderRadius: 16,
+  padding: '12px 16px', fontFamily: sans, fontSize: 14, color: ink,
+  outline: 'none',
+}
 
 export default function CompleteProfile({ onComplete }) {
   const { user } = useAuth()
@@ -55,51 +81,46 @@ export default function CompleteProfile({ onComplete }) {
 
   return (
     <div style={{
-      minHeight: '100vh',
-      background: '#0B0B14',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: 24,
+      minHeight: '100vh', background: bg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
     }}>
       <div style={{
-        width: '100%',
-        maxWidth: 400,
-        background: '#111120',
-        border: '1px solid #1E1E2E',
-        borderRadius: 20,
-        padding: '40px 36px',
+        width: '100%', maxWidth: 480,
+        background: card, borderRadius: 22, padding: 32,
+        boxShadow: '0 8px 30px rgba(22,24,27,0.08)',
+        boxSizing: 'border-box',
       }}>
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#C9A84C', marginBottom: 6, letterSpacing: '-0.5px' }}>
-            RefSwap
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: '#F0EDE8', marginBottom: 6 }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ fontFamily: serif, fontSize: 28, color: ink, marginBottom: 8 }}>
             Complete your profile
           </div>
-          <div style={{ fontSize: 13, color: '#3A3A50' }}>
+          <div style={{ fontFamily: sans, fontSize: 14, color: inkSoft }}>
             A few details before you start browsing.
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={fieldWrap}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
             <label style={labelStyle}>Your name</label>
             <input
               type="text"
               placeholder="e.g. James"
               value={name}
               onChange={e => setName(e.target.value)}
+              onFocus={focusOn}
+              onBlur={focusOff}
               required
               style={inputStyle}
             />
           </div>
 
-          <div style={fieldWrap}>
+          <div>
             <label style={labelStyle}>Country</label>
             <select
               value={country}
               onChange={e => setCountry(e.target.value)}
+              onFocus={focusOn}
+              onBlur={focusOff}
               required
               style={{ ...inputStyle, cursor: 'pointer' }}
             >
@@ -113,15 +134,16 @@ export default function CompleteProfile({ onComplete }) {
           <button
             type="submit"
             disabled={loading}
+            onMouseEnter={e => { if (!loading) e.currentTarget.style.background = accentHover }}
+            onMouseLeave={e => { if (!loading) e.currentTarget.style.background = accent }}
             style={{
-              marginTop: 6,
-              background: loading ? '#1E1E2E' : '#C9A84C',
-              color: loading ? '#3A3A50' : '#0B0A07',
-              border: 'none', borderRadius: 10,
-              padding: '13px 0',
-              fontSize: 14, fontWeight: 700,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background 0.15s',
+              all: 'unset', cursor: loading ? 'default' : 'pointer', boxSizing: 'border-box',
+              textAlign: 'center', width: '100%', marginTop: 6,
+              background: accent, color: '#fff',
+              borderRadius: 99, padding: '14px 28px',
+              fontFamily: sans, fontSize: 15, fontWeight: 500,
+              opacity: loading ? 0.4 : 1,
+              transition: 'background 300ms ease, opacity 300ms ease',
             }}
           >
             {loading ? 'Saving…' : 'Continue'}
@@ -130,10 +152,9 @@ export default function CompleteProfile({ onComplete }) {
 
         {error && (
           <div style={{
-            marginTop: 14, padding: '10px 14px', borderRadius: 8,
-            background: 'rgba(239,68,68,0.08)',
-            border: '1px solid rgba(239,68,68,0.2)',
-            color: '#f87171', fontSize: 13,
+            marginTop: 14, padding: '10px 14px', borderRadius: 12,
+            background: `${red}14`, color: red,
+            fontFamily: sans, fontSize: 13,
           }}>
             {error}
           </div>
@@ -141,24 +162,4 @@ export default function CompleteProfile({ onComplete }) {
       </div>
     </div>
   )
-}
-
-const fieldWrap = {
-  display: 'flex', flexDirection: 'column', gap: 6,
-}
-
-const labelStyle = {
-  fontSize: 11, fontWeight: 600, color: '#3A3A50',
-  letterSpacing: '0.08em', textTransform: 'uppercase',
-}
-
-const inputStyle = {
-  background: '#0B0B14',
-  border: '1px solid #1E1E2E',
-  borderRadius: 10,
-  padding: '12px 14px',
-  fontSize: 14,
-  color: '#F0EDE8',
-  outline: 'none',
-  width: '100%',
 }
