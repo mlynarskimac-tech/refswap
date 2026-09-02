@@ -9,6 +9,7 @@ import CompleteProfile from './pages/CompleteProfile'
 import CreateListing from './pages/CreateListing'
 import Browse from './pages/Browse'
 import MyWatch from './pages/MyWatch'
+import IncomingLikes from './pages/IncomingLikes'
 import Matches from './pages/Matches'
 import Chat from './pages/Chat'
 import Header from './components/Header'
@@ -72,6 +73,7 @@ function AppRoutes() {
         <Route path="/browse"         element={<Browse />} />
         <Route path="/create-listing" element={user ? <CreateListing /> : <Navigate to="/login" />} />
         <Route path="/my-watch"       element={user ? <MyWatch />       : <Navigate to="/login" />} />
+        <Route path="/incoming"       element={user ? <IncomingLikes /> : <Navigate to="/login" />} />
         <Route path="/matches"        element={user ? <Matches />       : <Navigate to="/login" />} />
         <Route path="/chat/:matchId"  element={user ? <Chat />          : <Navigate to="/login" />} />
         <Route path="/chat"           element={user ? <Chat />          : <Navigate to="/login" />} />

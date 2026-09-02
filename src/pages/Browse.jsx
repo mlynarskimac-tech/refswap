@@ -173,6 +173,77 @@ function WatchDrawer({ listing, liked, onLike, onClose, onReport }) {
   )
 }
 
+// ── LikeConfirmModal ───────────────────────────────────────────────────────
+const NOTE_MAX = 140
+
+function LikeConfirmModal({ listing, onConfirm, onCancel }) {
+  const [note, setNote] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  if (!listing) return null
+
+  async function handleConfirm() {
+    setLoading(true)
+    await onConfirm(note)
+    setLoading(false)
+  }
+
+  const remaining = NOTE_MAX - note.length
+
+  return (
+    <div onClick={onCancel} style={{
+      position: 'fixed', inset: 0, zIndex: 85,
+      background: 'rgba(22,24,27,0.35)', backdropFilter: 'blur(6px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      animation: 'fadeIn .2s ease',
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: card, borderRadius: 22, padding: '28px 26px',
+        width: '100%', maxWidth: 380, margin: '0 16px', boxSizing: 'border-box',
+        boxShadow: '0 24px 60px -16px rgba(22,24,27,0.24)',
+      }}>
+        <div style={{ fontFamily: sans, fontSize: 11, letterSpacing: '.1em', color: inkSoft, textTransform: 'uppercase' }}>
+          Send a like
+        </div>
+        <div style={{ fontFamily: serif, fontSize: 22, fontWeight: 600, color: ink, marginTop: 6 }}>
+          {listing.brand} {listing.model}
+        </div>
+
+        <textarea
+          value={note}
+          onChange={e => setNote(e.target.value.slice(0, NOTE_MAX))}
+          placeholder="Add an optional note (visible after they like you back)"
+          maxLength={NOTE_MAX}
+          rows={3}
+          style={{
+            width: '100%', boxSizing: 'border-box', marginTop: 18,
+            fontFamily: sans, fontSize: 14, color: ink,
+            background: bg, border: 'none', borderRadius: 16,
+            padding: '12px 14px', resize: 'none', outline: 'none',
+          }}
+        />
+        <div style={{ textAlign: 'right', marginTop: 6, fontFamily: sans, fontSize: 12, color: inkSoft }}>
+          {remaining} characters left
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+          <button onClick={onCancel} style={{
+            all: 'unset', cursor: 'pointer', fontFamily: sans, fontSize: 13.5,
+            color: inkSoft, padding: '10px 18px',
+          }}>Cancel</button>
+          <button onClick={handleConfirm} disabled={loading} style={{
+            all: 'unset', cursor: loading ? 'default' : 'pointer', boxSizing: 'border-box',
+            fontFamily: sans, fontSize: 13.5, fontWeight: 500,
+            color: '#fff', background: accent, opacity: loading ? 0.6 : 1,
+            borderRadius: 99, padding: '10px 22px',
+            transition: 'opacity 200ms ease',
+          }}>{loading ? 'Sending…' : 'Send like'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── LikeButton ─────────────────────────────────────────────────────────────
 // Plain in-flow circle — never overlaid by a photo/gradient, so it can never
 // lose clicks to a stacking/pointer-events issue.
@@ -317,6 +388,7 @@ export default function Browse() {
   const [loading,    setLoading]    = useState(true)
   const [drawer,     setDrawer]     = useState(null)
   const [reportOpen, setReportOpen] = useState(false)
+  const [likeModalListing, setLikeModalListing] = useState(null)
 
   const [tier,     setTier]     = useState('Any tier')
   const [geo,      setGeo]      = useState('Anywhere')
@@ -366,7 +438,18 @@ export default function Browse() {
     setLoading(false)
   }
 
-  async function handleLike(listingId) {
+  async function removeLike(listingId) {
+    const { error } = await supabase.from('likes').delete().eq('from_user', user.id).eq('to_listing', listingId)
+    if (error) {
+      console.error('[Browse: remove like]', error)
+      flash("Couldn't remove like — try again.")
+      return
+    }
+    setLikedIds(prev => { const n = new Set(prev); n.delete(listingId); return n })
+    if (drawer?.id === listingId) setDrawer(prev => ({ ...prev }))
+  }
+
+  function requestLike(listingId) {
     if (!user) { navigate('/login'); return }
     if (!myListing) {
       flash('Add your watch first to like others.')
@@ -379,21 +462,22 @@ export default function Browse() {
     }
 
     if (likedIds.has(listingId)) {
-      const { error } = await supabase.from('likes').delete().eq('from_user', user.id).eq('to_listing', listingId)
-      if (error) {
-        console.error('[Browse: remove like]', error)
-        flash("Couldn't remove like — try again.")
-        return
-      }
-      setLikedIds(prev => { const n = new Set(prev); n.delete(listingId); return n })
-      if (drawer?.id === listingId) setDrawer(prev => ({ ...prev }))
+      removeLike(listingId)
       return
     }
 
-    const theirListing = listings.find(l => l.id === listingId)
+    const theirListing = listings.find(l => l.id === listingId) || (drawer?.id === listingId ? drawer : null)
+    if (theirListing) setLikeModalListing(theirListing)
+  }
+
+  async function confirmLike(note) {
+    const theirListing = likeModalListing
+    if (!theirListing) return
+    const listingId = theirListing.id
+    const trimmedNote = note.trim() || null
 
     const { error: likeErr } = await supabase.from('likes').upsert(
-      { from_user: user.id, to_listing: listingId },
+      { from_user: user.id, to_listing: listingId, note: trimmedNote },
       { onConflict: 'from_user,to_listing', ignoreDuplicates: true }
     )
     if (likeErr) {
@@ -403,27 +487,26 @@ export default function Browse() {
     }
 
     setLikedIds(prev => new Set([...prev, listingId]))
+    setLikeModalListing(null)
 
-    if (theirListing) {
-      // give the DB trigger a moment to create the match row
-      await new Promise(resolve => setTimeout(resolve, 700))
+    // give the DB trigger a moment to create the match row
+    await new Promise(resolve => setTimeout(resolve, 700))
 
-      const match = unwrap(
-        await supabase.from('matches').select('id')
-          .eq('status', 'active')
-          .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
-          .or(`listing_a.eq.${listingId},listing_b.eq.${listingId}`)
-          .maybeSingle(),
-        'Browse: check for match'
-      )
+    const match = unwrap(
+      await supabase.from('matches').select('id')
+        .eq('status', 'active')
+        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+        .or(`listing_a.eq.${listingId},listing_b.eq.${listingId}`)
+        .maybeSingle(),
+      'Browse: check for match'
+    )
 
-      if (match) {
-        setMatchedIds(prev => new Set([...prev, listingId]))
-        flash("It's a match! Go to your matches to start chatting.")
-        refreshBadges()
-      } else {
-        flash("Liked — we'll let you know if it's mutual.")
-      }
+    if (match) {
+      setMatchedIds(prev => new Set([...prev, listingId]))
+      flash("It's a match! Go to your matches to start chatting.")
+      refreshBadges()
+    } else {
+      flash("Liked — we'll let you know if it's mutual.")
     }
   }
 
@@ -475,7 +558,7 @@ export default function Browse() {
       {/* featured card */}
       {featured && (
         <div style={{ marginTop: 22 }}>
-          <FeaturedCard listing={featured} liked={likedIds.has(featured.id)} onLike={handleLike} />
+          <FeaturedCard listing={featured} liked={likedIds.has(featured.id)} onLike={requestLike} />
         </div>
       )}
 
@@ -513,7 +596,7 @@ export default function Browse() {
               key={l.id}
               listing={l}
               liked={likedIds.has(l.id)}
-              onLike={handleLike}
+              onLike={requestLike}
               onOpen={() => setDrawer(l)}
             />
           ))}
@@ -528,7 +611,7 @@ export default function Browse() {
         key={drawer?.id}
         listing={drawer}
         liked={drawer ? likedIds.has(drawer.id) : false}
-        onLike={handleLike}
+        onLike={requestLike}
         onClose={() => setDrawer(null)}
         onReport={() => setReportOpen(true)}
       />
@@ -537,6 +620,13 @@ export default function Browse() {
         isOpen={reportOpen}
         onClose={() => setReportOpen(false)}
         onSubmit={handleSubmitReport}
+      />
+
+      <LikeConfirmModal
+        key={likeModalListing?.id}
+        listing={likeModalListing}
+        onConfirm={confirmLike}
+        onCancel={() => setLikeModalListing(null)}
       />
     </div>
   )

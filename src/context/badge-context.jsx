@@ -3,27 +3,30 @@ import { supabase } from '../supabase'
 import { useAuth } from './auth-context'
 import { unwrap } from '../lib/db'
 
-const BadgeCtx = createContext({ newMatches: 0, unread: 0, firstUnreadMatchId: null, refresh: () => {} })
+const BadgeCtx = createContext({ newMatches: 0, unread: 0, firstUnreadMatchId: null, incomingLikes: 0, refresh: () => {} })
 
 export function BadgeProvider({ children }) {
   const { user } = useAuth()
   const [newMatches, setNewMatches] = useState(0)
   const [unread, setUnread] = useState(0)
   const [firstUnreadMatchId, setFirstUnreadMatchId] = useState(null)
+  const [incomingLikes, setIncomingLikes] = useState(0)
 
   const refresh = useCallback(async () => {
     if (!user) {
-      setNewMatches(0); setUnread(0); setFirstUnreadMatchId(null)
+      setNewMatches(0); setUnread(0); setFirstUnreadMatchId(null); setIncomingLikes(0)
       return
     }
-    const matches = unwrap(
-      await supabase
+    const [matchesResult, incomingCountResult] = await Promise.all([
+      supabase
         .from('matches')
         .select('id, created_at')
         .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
         .eq('status', 'active'),
-      'Badges: fetch matches'
-    )
+      supabase.rpc('get_incoming_likes_count'),
+    ])
+    const matches = unwrap(matchesResult, 'Badges: fetch matches')
+    setIncomingLikes(unwrap(incomingCountResult, 'Badges: fetch incoming likes count') ?? 0)
 
     if (!matches || matches.length === 0) {
       setNewMatches(0); setUnread(0); setFirstUnreadMatchId(null)
@@ -80,7 +83,7 @@ export function BadgeProvider({ children }) {
   }, [refresh])
 
   return (
-    <BadgeCtx.Provider value={{ newMatches, unread, firstUnreadMatchId, refresh }}>
+    <BadgeCtx.Provider value={{ newMatches, unread, firstUnreadMatchId, incomingLikes, refresh }}>
       {children}
     </BadgeCtx.Provider>
   )

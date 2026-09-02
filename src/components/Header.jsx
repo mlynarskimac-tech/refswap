@@ -16,6 +16,7 @@ const dotRed  = '#C0392B'
 const NAV = [
   { path: '/browse',  label: 'Browse' },
   { path: '/my-watch',label: 'My Watch' },
+  { path: '/incoming',label: 'Incoming', badge: 'incoming' },
   { path: '/matches', label: 'Matches',  badge: 'green' },
   { path: '/chat',    label: 'Messages', badge: 'red' },
 ]
@@ -62,7 +63,7 @@ function NavLink({ n, active, dot, onClick }) {
 export default function Header() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const { newMatches, unread, firstUnreadMatchId } = useBadges()
+  const { newMatches, unread, firstUnreadMatchId, incomingLikes } = useBadges()
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -70,8 +71,9 @@ export default function Header() {
   }
 
   function dotFor(badge) {
-    if (badge === 'green' && newMatches > 0) return dotGreen
-    if (badge === 'red'   && unread > 0)     return dotRed
+    if (badge === 'green'    && newMatches    > 0) return dotGreen
+    if (badge === 'red'      && unread        > 0) return dotRed
+    if (badge === 'incoming' && incomingLikes > 0) return dotRed
     return null
   }
 

@@ -12,6 +12,7 @@ const dotRed  = '#C0392B'
 const TABS = [
   { path: '/browse',  label: 'Browse',   glyph: '◳' },
   { path: '/my-watch',label: 'My Watch', glyph: '⌚' },
+  { path: '/incoming',label: 'Incoming', glyph: '♡', badge: 'incoming' },
   { path: '/matches', label: 'Matches',  glyph: '⇄', badge: 'green' },
   { path: '/chat',    label: 'Messages', glyph: '✉', badge: 'red' },
 ]
@@ -19,7 +20,7 @@ const TABS = [
 export default function TabBar() {
   const navigate  = useNavigate()
   const { pathname } = useLocation()
-  const { newMatches, unread, firstUnreadMatchId } = useBadges()
+  const { newMatches, unread, firstUnreadMatchId, incomingLikes } = useBadges()
 
   return (
     <nav className="tab-bar" style={{
@@ -32,8 +33,9 @@ export default function TabBar() {
     }}>
       {TABS.map((t) => {
         const active = pathname.startsWith(t.path)
-        const dot = t.badge === 'green' && newMatches > 0 ? dotGreen
-                  : t.badge === 'red'   && unread > 0     ? dotRed
+        const dot = t.badge === 'green'    && newMatches    > 0 ? dotGreen
+                  : t.badge === 'red'      && unread        > 0 ? dotRed
+                  : t.badge === 'incoming' && incomingLikes > 0 ? dotRed
                   : null
         const dest = t.badge === 'red' && firstUnreadMatchId
           ? `/chat/${firstUnreadMatchId}`
