@@ -17,7 +17,11 @@
       "Bash(git -C E:/refswap log --oneline -3)",
       "Bash(git -C E:/refswap add src/)",
       "Bash(git -C E:/refswap status --short)",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(npx --no-install playwright --version)",
+      "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('has playwright'\\)}catch\\(e\\){console.log\\('no playwright module'\\)}\")",
+      "Bash(curl -sf http://localhost:5173/src/pages/Login.jsx -o /dev/null -w \"%{http_code}\\\\n\")",
+      "Read(//e/Temp/Temp/claude/E--refswap/e77a39a9-ef73-486f-993a-d4f6a980ee19/scratchpad/**)"
     ]
   }
 }

@@ -69,6 +69,19 @@ button, input, select, textarea { font-family: inherit; }
   .drawer-like-btn { width: 100% !important; }
 }
 
+/* Login split-screen */
+@media (max-width: 860px) {
+  .login-split { flex-direction: column !important; }
+  .login-brand {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    padding: 32px 24px !important;
+    gap: 20px;
+  }
+  .login-brand-steps, .login-brand-footer { display: none !important; }
+  .login-form-col { width: 100% !important; }
+}
+
 .match-row:hover .match-cta {
   background: #274C6B;
   color: #fff;
