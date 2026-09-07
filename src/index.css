@@ -78,7 +78,7 @@ button, input, select, textarea { font-family: inherit; }
     padding: 32px 24px !important;
     gap: 20px;
   }
-  .login-brand-steps, .login-brand-footer { display: none !important; }
+  .login-brand-steps { display: none !important; }
   .login-form-col { width: 100% !important; }
 }
 

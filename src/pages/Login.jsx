@@ -229,20 +229,6 @@ export default function Login() {
               {loading ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
             </button>
           </form>
-
-          <div style={{
-            borderTop: '1px solid rgba(22,24,27,0.08)', paddingTop: 16, marginTop: 22,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap',
-          }}>
-            {['UK · DE · US', '€3k – €50k', 'P2P exchange'].map((item, i, arr) => (
-              <span key={item} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontFamily: sans, fontSize: 11.5, color: inkSoft }}>{item}</span>
-                {i < arr.length - 1 && (
-                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: accent, flexShrink: 0 }} />
-                )}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
     </div>
