@@ -4,6 +4,7 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
 import { useBadges } from '../context/badge-context'
 import { useToast } from '../context/toast-context'
+import { useAuthGate } from '../context/auth-gate-context'
 import { unwrap } from '../lib/db'
 import { TIERS, GEO_LABELS, PhotoGallery } from '../components/primitives'
 import ReportModal from '../components/ReportModal'
@@ -371,6 +372,46 @@ function FeaturedCard({ listing, liked, onLike }) {
   )
 }
 
+// ── HeroBand — slim public banner for logged-out visitors ─────────────────
+const heroSteps = [
+  'List your watch',
+  'Match when it’s mutual',
+  'Chat & arrange the swap',
+]
+
+function HeroBand({ onJoin }) {
+  return (
+    <div style={{
+      background: accent, borderRadius: 22, padding: '18px 26px', marginBottom: 22,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap',
+    }}>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: serif, fontSize: 20, fontWeight: 500, color: '#fff' }}>RefSwap</span>
+          <span style={{ fontFamily: sans, fontSize: 14, color: '#C3D0DC' }}>
+            Swap your watch for one you'd rather wear.
+          </span>
+        </div>
+        <div className="hero-band-extra" style={{ display: 'flex', alignItems: 'center', gap: 18, marginTop: 8, flexWrap: 'wrap' }}>
+          {heroSteps.map((s, i) => (
+            <span key={s} style={{ fontFamily: sans, fontSize: 12.5, color: '#EAF0F5' }}>
+              <b style={{ opacity: .8 }}>{i + 1}</b> {s}
+            </span>
+          ))}
+          <span style={{ fontFamily: sans, fontSize: 12.5, color: '#C3D0DC' }}>
+            No dealers. No fees. Just collectors.
+          </span>
+        </div>
+      </div>
+      <button onClick={onJoin} style={{
+        all: 'unset', cursor: 'pointer', flexShrink: 0,
+        fontFamily: sans, fontSize: 14, fontWeight: 500, color: accent,
+        background: '#fff', borderRadius: 99, padding: '11px 22px',
+      }}>Join</button>
+    </div>
+  )
+}
+
 // ── Browse page ────────────────────────────────────────────────────────────
 const TIER_OPTS = ['Any tier', 'Entry', 'Mid', 'High', 'Ultra']
 const GEO_OPTS  = ['Anywhere', 'DE', 'GB', 'US']
@@ -380,6 +421,7 @@ export default function Browse() {
   const navigate  = useNavigate()
   const { refresh: refreshBadges } = useBadges()
   const { flash } = useToast()
+  const { open: openAuthGate } = useAuthGate()
 
   const [listings,   setListings]   = useState([])
   const [myListing,  setMyListing]  = useState(null)
@@ -450,7 +492,7 @@ export default function Browse() {
   }
 
   function requestLike(listingId) {
-    if (!user) { navigate('/login'); return }
+    if (!user) { openAuthGate(); return }
     if (!myListing) {
       flash('Add your watch first to like others.')
       navigate('/create-listing')
@@ -545,6 +587,8 @@ export default function Browse() {
 
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', padding: '26px 26px 40px' }}>
+      {!user && <HeroBand onJoin={() => navigate('/login')} />}
+
       {/* page head */}
       <div>
         <h1 style={{ margin: 0, fontFamily: serif, fontWeight: 600, fontSize: 34, color: ink }}>

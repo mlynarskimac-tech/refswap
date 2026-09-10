@@ -10,7 +10,7 @@ const dotGreen= '#274C6B'
 const dotRed  = '#C0392B'
 
 const TABS = [
-  { path: '/browse',  label: 'Browse',   glyph: '◳' },
+  { path: '/',         label: 'Browse',   glyph: '◳' },
   { path: '/my-watch',label: 'My Watch', glyph: '⌚' },
   { path: '/incoming',label: 'Incoming', glyph: '♡', badge: 'incoming' },
   { path: '/matches', label: 'Matches',  glyph: '⇄', badge: 'green' },
@@ -32,7 +32,7 @@ export default function TabBar() {
       flexDirection: 'row',
     }}>
       {TABS.map((t) => {
-        const active = pathname.startsWith(t.path)
+        const active = t.path === '/' ? pathname === '/' : pathname.startsWith(t.path)
         const dot = t.badge === 'green'    && newMatches    > 0 ? dotGreen
                   : t.badge === 'red'      && unread        > 0 ? dotRed
                   : t.badge === 'incoming' && incomingLikes > 0 ? dotRed

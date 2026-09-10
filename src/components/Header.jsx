@@ -1,6 +1,8 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { useAuth } from '../context/auth-context'
 import { useBadges } from '../context/badge-context'
+import { useAuthGate } from '../context/auth-gate-context'
 
 // ── The Vault × Manufacture — soft ──────────────────────────────────────────
 const card    = '#FFFFFF'
@@ -14,7 +16,7 @@ const dotGreen= '#274C6B'
 const dotRed  = '#C0392B'
 
 const NAV = [
-  { path: '/browse',  label: 'Browse' },
+  { path: '/',         label: 'Browse' },
   { path: '/my-watch',label: 'My Watch' },
   { path: '/incoming',label: 'Incoming', badge: 'incoming' },
   { path: '/matches', label: 'Matches',  badge: 'green' },
@@ -63,11 +65,18 @@ function NavLink({ n, active, dot, onClick }) {
 export default function Header() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const { user } = useAuth()
   const { newMatches, unread, firstUnreadMatchId, incomingLikes } = useBadges()
+  const { open: openAuthGate } = useAuthGate()
 
   async function handleSignOut() {
     await supabase.auth.signOut()
     navigate('/login')
+  }
+
+  function handleListAWatch() {
+    if (!user) { openAuthGate(); return }
+    navigate('/create-listing')
   }
 
   function dotFor(badge) {
@@ -82,6 +91,10 @@ export default function Header() {
     return nav.path
   }
 
+  function isActive(nav) {
+    return nav.path === '/' ? pathname === '/' : pathname.startsWith(nav.path)
+  }
+
   return (
     <header style={{
       position: 'sticky', top: 0, zIndex: 30,
@@ -93,25 +106,26 @@ export default function Header() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 26px', height: 64,
       }}>
-        <button onClick={() => navigate('/browse')} style={{ all: 'unset', cursor: 'pointer' }}>
+        <button onClick={() => navigate('/')} style={{ all: 'unset', cursor: 'pointer' }}>
           <Logo />
         </button>
 
         <nav className="desk-nav" style={{ display: 'flex', gap: 30, alignItems: 'center' }}>
-          {NAV.map((n) => (
+          {user && NAV.map((n) => (
             <NavLink
               key={n.path}
               n={n}
-              active={pathname.startsWith(n.path)}
+              active={isActive(n)}
               dot={dotFor(n.badge)}
               onClick={() => navigate(destFor(n))}
             />
           ))}
         </nav>
 
-        <div className="desk-nav" style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
           <button
-            onClick={() => navigate('/create-listing')}
+            className="desk-nav"
+            onClick={handleListAWatch}
             onMouseEnter={e => { e.currentTarget.style.background = accentHover }}
             onMouseLeave={e => { e.currentTarget.style.background = accent }}
             style={{
@@ -121,15 +135,42 @@ export default function Header() {
               transition: 'background 300ms ease',
             }}
           >+ List a watch</button>
-          <span
-            onClick={handleSignOut}
-            onMouseEnter={e => { e.currentTarget.style.color = ink }}
-            onMouseLeave={e => { e.currentTarget.style.color = inkSoft }}
-            style={{
-              fontFamily: sans, fontSize: 14, color: inkSoft, cursor: 'pointer',
-              transition: 'color 300ms ease',
-            }}
-          >Sign out</span>
+
+          {user ? (
+            <span
+              className="desk-nav"
+              onClick={handleSignOut}
+              onMouseEnter={e => { e.currentTarget.style.color = ink }}
+              onMouseLeave={e => { e.currentTarget.style.color = inkSoft }}
+              style={{
+                fontFamily: sans, fontSize: 14, color: inkSoft, cursor: 'pointer',
+                transition: 'color 300ms ease',
+              }}
+            >Sign out</span>
+          ) : (
+            <>
+              <span
+                onClick={() => navigate('/login')}
+                onMouseEnter={e => { e.currentTarget.style.color = ink }}
+                onMouseLeave={e => { e.currentTarget.style.color = inkSoft }}
+                style={{
+                  fontFamily: sans, fontSize: 14, color: inkSoft, cursor: 'pointer',
+                  transition: 'color 300ms ease',
+                }}
+              >Sign in</span>
+              <button
+                onClick={() => navigate('/login')}
+                onMouseEnter={e => { e.currentTarget.style.background = accentHover }}
+                onMouseLeave={e => { e.currentTarget.style.background = accent }}
+                style={{
+                  all: 'unset', cursor: 'pointer',
+                  fontFamily: sans, fontSize: 14, color: '#fff',
+                  background: accent, borderRadius: 99, padding: '10px 18px',
+                  transition: 'background 300ms ease',
+                }}
+              >Join</button>
+            </>
+          )}
         </div>
       </div>
     </header>
