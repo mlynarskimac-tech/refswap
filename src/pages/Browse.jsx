@@ -9,6 +9,7 @@ import { unwrap, findFreshMatch } from '../lib/db'
 import { TIERS, GEO_LABELS, PhotoGallery } from '../components/primitives'
 import ReportModal from '../components/ReportModal'
 import MatchCelebration from '../components/MatchCelebration'
+import LikeLimitNotice from '../components/LikeLimitNotice'
 
 // ── The Vault × Manufacture — soft ──────────────────────────────────────────
 const bg      = '#F6F6F3'
@@ -433,6 +434,7 @@ export default function Browse() {
   const [reportOpen, setReportOpen] = useState(false)
   const [likeModalListing, setLikeModalListing] = useState(null)
   const [matchCelebrationOpen, setMatchCelebrationOpen] = useState(false)
+  const [likeLimitOpen, setLikeLimitOpen] = useState(false)
 
   const [tier,     setTier]     = useState('Any tier')
   const [geo,      setGeo]      = useState('Anywhere')
@@ -526,7 +528,11 @@ export default function Browse() {
     )
     if (likeErr) {
       console.error('[Browse: add like]', likeErr)
-      flash("Couldn't like this watch — try again.")
+      if (likeErr.message?.includes('LIKE_RATE_LIMIT')) {
+        setLikeLimitOpen(true)
+      } else {
+        flash("Couldn't like this watch — try again.")
+      }
       return
     }
 
@@ -668,6 +674,11 @@ export default function Browse() {
       <MatchCelebration
         open={matchCelebrationOpen}
         onClose={() => setMatchCelebrationOpen(false)}
+      />
+
+      <LikeLimitNotice
+        open={likeLimitOpen}
+        onClose={() => setLikeLimitOpen(false)}
       />
     </div>
   )

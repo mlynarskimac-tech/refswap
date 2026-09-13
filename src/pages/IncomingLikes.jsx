@@ -6,6 +6,7 @@ import { useToast } from '../context/toast-context'
 import { unwrap, findFreshMatch } from '../lib/db'
 import { TIERS, GEO_LABELS, PhotoGallery } from '../components/primitives'
 import MatchCelebration from '../components/MatchCelebration'
+import LikeLimitNotice from '../components/LikeLimitNotice'
 
 // ── The Vault × Manufacture — soft ──────────────────────────────────────────
 const bg      = '#F6F6F3'
@@ -119,6 +120,7 @@ export default function IncomingLikes() {
   const [likes,   setLikes]   = useState([])
   const [loading, setLoading] = useState(true)
   const [matchCelebrationOpen, setMatchCelebrationOpen] = useState(false)
+  const [likeLimitOpen, setLikeLimitOpen] = useState(false)
 
   useEffect(() => { fetchIncoming() }, [])
 
@@ -136,7 +138,11 @@ export default function IncomingLikes() {
     )
     if (error) {
       console.error('[IncomingLikes: like back]', error)
-      flash("Couldn't like back — try again.")
+      if (error.message?.includes('LIKE_RATE_LIMIT')) {
+        setLikeLimitOpen(true)
+      } else {
+        flash("Couldn't like back — try again.")
+      }
       return
     }
 
@@ -183,6 +189,11 @@ export default function IncomingLikes() {
       <MatchCelebration
         open={matchCelebrationOpen}
         onClose={() => setMatchCelebrationOpen(false)}
+      />
+
+      <LikeLimitNotice
+        open={likeLimitOpen}
+        onClose={() => setLikeLimitOpen(false)}
       />
     </div>
   )
