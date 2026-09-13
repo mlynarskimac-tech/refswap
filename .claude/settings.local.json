@@ -21,7 +21,18 @@
       "Bash(npx --no-install playwright --version)",
       "Bash(node -e \"try{require.resolve\\('playwright'\\);console.log\\('has playwright'\\)}catch\\(e\\){console.log\\('no playwright module'\\)}\")",
       "Bash(curl -sf http://localhost:5173/src/pages/Login.jsx -o /dev/null -w \"%{http_code}\\\\n\")",
-      "Read(//e/Temp/Temp/claude/E--refswap/e77a39a9-ef73-486f-993a-d4f6a980ee19/scratchpad/**)"
+      "Read(//e/Temp/Temp/claude/E--refswap/e77a39a9-ef73-486f-993a-d4f6a980ee19/scratchpad/**)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173)",
+      "Skill(run)",
+      "Bash(ls .claude/skills)",
+      "Bash(grep -Hm1 '^description:' .claude/skills/*/SKILL.md)",
+      "Bash(chromium-cli --help)",
+      "Bash(npx --yes playwright --version)",
+      "Bash(curl -s -o /dev/null -w \"dev server: %{http_code}\\\\n\" http://localhost:5173)",
+      "Bash(netstat -ano)",
+      "Bash(powershell -Command \"Stop-Process -Id 9272 -Force\")",
+      "Bash(curl -s -o /dev/null -w \"5173: %{http_code}\\\\n\" http://localhost:5173)",
+      "Bash(curl -s -o /dev/null -w \"5174: %{http_code}\\\\n\" http://localhost:5174)"
     ]
   }
 }

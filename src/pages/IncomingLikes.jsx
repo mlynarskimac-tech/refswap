@@ -3,8 +3,9 @@ import { supabase } from '../supabase'
 import { useAuth } from '../context/auth-context'
 import { useBadges } from '../context/badge-context'
 import { useToast } from '../context/toast-context'
-import { unwrap } from '../lib/db'
+import { unwrap, findFreshMatch } from '../lib/db'
 import { TIERS, GEO_LABELS, PhotoGallery } from '../components/primitives'
+import MatchCelebration from '../components/MatchCelebration'
 
 // ── The Vault × Manufacture — soft ──────────────────────────────────────────
 const bg      = '#F6F6F3'
@@ -117,6 +118,7 @@ export default function IncomingLikes() {
 
   const [likes,   setLikes]   = useState([])
   const [loading, setLoading] = useState(true)
+  const [matchCelebrationOpen, setMatchCelebrationOpen] = useState(false)
 
   useEffect(() => { fetchIncoming() }, [])
 
@@ -139,7 +141,14 @@ export default function IncomingLikes() {
     }
 
     setLikes(prev => prev.filter(l => l.like_id !== like.like_id))
-    flash("It's a match! Check your matches.")
+
+    const match = await findFreshMatch(supabase, user.id, like.liker_listing_id)
+
+    if (match) {
+      setMatchCelebrationOpen(true)
+    } else {
+      flash("Liked back — we'll let you know if it's mutual.")
+    }
     refreshBadges()
   }
 
@@ -170,6 +179,11 @@ export default function IncomingLikes() {
           ))}
         </div>
       )}
+
+      <MatchCelebration
+        open={matchCelebrationOpen}
+        onClose={() => setMatchCelebrationOpen(false)}
+      />
     </div>
   )
 }

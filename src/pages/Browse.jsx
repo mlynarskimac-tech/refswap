@@ -5,9 +5,10 @@ import { useAuth } from '../context/auth-context'
 import { useBadges } from '../context/badge-context'
 import { useToast } from '../context/toast-context'
 import { useAuthGate } from '../context/auth-gate-context'
-import { unwrap } from '../lib/db'
+import { unwrap, findFreshMatch } from '../lib/db'
 import { TIERS, GEO_LABELS, PhotoGallery } from '../components/primitives'
 import ReportModal from '../components/ReportModal'
+import MatchCelebration from '../components/MatchCelebration'
 
 // ── The Vault × Manufacture — soft ──────────────────────────────────────────
 const bg      = '#F6F6F3'
@@ -431,6 +432,7 @@ export default function Browse() {
   const [drawer,     setDrawer]     = useState(null)
   const [reportOpen, setReportOpen] = useState(false)
   const [likeModalListing, setLikeModalListing] = useState(null)
+  const [matchCelebrationOpen, setMatchCelebrationOpen] = useState(false)
 
   const [tier,     setTier]     = useState('Any tier')
   const [geo,      setGeo]      = useState('Anywhere')
@@ -531,21 +533,11 @@ export default function Browse() {
     setLikedIds(prev => new Set([...prev, listingId]))
     setLikeModalListing(null)
 
-    // give the DB trigger a moment to create the match row
-    await new Promise(resolve => setTimeout(resolve, 700))
-
-    const match = unwrap(
-      await supabase.from('matches').select('id')
-        .eq('status', 'active')
-        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
-        .or(`listing_a.eq.${listingId},listing_b.eq.${listingId}`)
-        .maybeSingle(),
-      'Browse: check for match'
-    )
+    const match = await findFreshMatch(supabase, user.id, listingId)
 
     if (match) {
       setMatchedIds(prev => new Set([...prev, listingId]))
-      flash("It's a match! Go to your matches to start chatting.")
+      setMatchCelebrationOpen(true)
       refreshBadges()
     } else {
       flash("Liked — we'll let you know if it's mutual.")
@@ -671,6 +663,11 @@ export default function Browse() {
         listing={likeModalListing}
         onConfirm={confirmLike}
         onCancel={() => setLikeModalListing(null)}
+      />
+
+      <MatchCelebration
+        open={matchCelebrationOpen}
+        onClose={() => setMatchCelebrationOpen(false)}
       />
     </div>
   )
