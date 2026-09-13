@@ -224,7 +224,7 @@ function LikeConfirmModal({ listing, onConfirm, onCancel }) {
             padding: '12px 14px', resize: 'none', outline: 'none',
           }}
         />
-        <div style={{ textAlign: 'right', marginTop: 6, fontFamily: sans, fontSize: 12, color: inkSoft }}>
+        <div style={{ textAlign: 'right', marginTop: 6, fontFamily: sans, fontSize: 12, color: remaining === 0 ? accent : inkSoft }}>
           {remaining} characters left
         </div>
 

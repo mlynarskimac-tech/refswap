@@ -12,6 +12,7 @@ const inkSoft = 'rgba(22,24,27,0.55)'
 const sans    = "'Inter', system-ui, sans-serif"
 const serif   = "'Fraunces', serif"
 const red     = '#C0392B'
+const inputBorder = '#E4E4DD'
 
 function focusOn(e)  { e.target.style.outline = `2px solid ${accent}`; e.target.style.outlineOffset = '0' }
 function focusOff(e) { e.target.style.outline = 'none' }
@@ -36,8 +37,9 @@ const labelStyle = {
 
 const inputStyle = {
   width: '100%', boxSizing: 'border-box',
-  background: bg, border: 'none', borderRadius: 16,
-  padding: '12px 16px', fontFamily: sans, fontSize: 14, color: ink,
+  height: 44,
+  background: card, border: `0.5px solid ${inputBorder}`, borderRadius: 12,
+  padding: '0 16px', fontFamily: sans, fontSize: 14, color: ink,
   outline: 'none',
 }
 
